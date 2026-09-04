@@ -16,8 +16,5 @@
     "saas"
   ],
   "author": "Saju Mauji",
-  "license": "ISC",
-  "dependencies": {
-    "puppeteer-core": "^25.9.0"
-  }
+  "license": "ISC"
 }
