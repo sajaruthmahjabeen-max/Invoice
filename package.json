@@ -4,6 +4,7 @@
   "description": "CoverPlus — Clinic & Hospital Covers Billing Management System",
   "main": "index.html",
   "scripts": {
+    "build": "node build-env.js",
     "dev": "npx serve -l 3000",
     "start": "npx serve -l 3000",
     "serve": "npx serve -l 3000"

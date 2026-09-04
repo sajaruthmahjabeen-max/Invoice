@@ -14,6 +14,7 @@ const PRECACHE_ASSETS = [
   './manifest.json',
   './libs/html2pdf.bundle.min.js',
   './libs/supabase.js',
+  './env.js',
   './icons/icon-192.png',
   './icons/icon-512.png',
   './icons/icon.svg'

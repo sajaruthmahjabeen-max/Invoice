@@ -2,8 +2,8 @@
    AUTH MODULE — Supabase Auth (Email + Password + Mode Toggle)
 ================================================================ */
 (function () {
-  const SUPABASE_URL = 'https://qhuhngicocldbcmbegfg.supabase.co';
-  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFodWhuZ2ljb2NsZGJjbWJlZ2ZnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgxMDMzOTEsImV4cCI6MjEwMzY3OTM5MX0.DwikR5b5qwkDSWxscH248zj3T6iNwZSPWVbfMkh77r0';
+  const SUPABASE_URL = (window.__ENV__ && window.__ENV__.SUPABASE_URL) || 'https://qhuhngicocldbcmbegfg.supabase.co';
+  const SUPABASE_ANON_KEY = (window.__ENV__ && window.__ENV__.SUPABASE_ANON_KEY) || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFodWhuZ2ljb2NsZGJjbWJlZ2ZnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgxMDMzOTEsImV4cCI6MjEwMzY3OTM5MX0.DwikR5b5qwkDSWxscH248zj3T6iNwZSPWVbfMkh77r0';
 
   // Initialise Supabase client
   let _supa = null;
@@ -372,8 +372,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
   // Supabase Cloud Database Configuration & Direct REST API
-  const SUPABASE_URL = 'https://qhuhngicocldbcmbegfg.supabase.co';
-  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFodWhuZ2ljb2NsZGJjbWJlZ2ZnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgxMDMzOTEsImV4cCI6MjEwMzY3OTM5MX0.DwikR5b5qwkDSWxscH248zj3T6iNwZSPWVbfMkh77r0';
+  const SUPABASE_URL = (window.__ENV__ && window.__ENV__.SUPABASE_URL) || 'https://qhuhngicocldbcmbegfg.supabase.co';
+  const SUPABASE_ANON_KEY = (window.__ENV__ && window.__ENV__.SUPABASE_ANON_KEY) || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFodWhuZ2ljb2NsZGJjbWJlZ2ZnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgxMDMzOTEsImV4cCI6MjEwMzY3OTM5MX0.DwikR5b5qwkDSWxscH248zj3T6iNwZSPWVbfMkh77r0';
 
   const supabaseHeaders = {
     'apikey': SUPABASE_ANON_KEY,
