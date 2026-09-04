@@ -414,6 +414,27 @@ button, input, select, textarea {
   transform: translateY(-1px);
 }
 
+.btn-header-install {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 16px;
+  border-radius: var(--radius-md);
+  background: #EFF6FF;
+  border: 1.5px solid #3B82F6;
+  color: #1D4ED8;
+  font-weight: 700;
+  font-size: 12.5px;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 1px 3px rgba(37, 99, 235, 0.1);
+}
+
+.btn-header-install:hover {
+  background: #DBEAFE;
+  transform: translateY(-1px);
+}
+
 /* VIEW SWITCHER / MULTI-PAGE ROUTING */
 .page-view {
   display: none;

@@ -12,3 +12,9 @@ npm-debug.log*
 # IDE
 .vscode/
 .idea/
+
+# Ignore root verification screenshots
+/*.png
+/*.jpg
+!icons/*.png
+!icons/*.svg

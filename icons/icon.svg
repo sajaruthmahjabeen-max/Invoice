@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0F172A"/>
+      <stop offset="50%" stop-color="#1E293B"/>
+      <stop offset="100%" stop-color="#0A0F1D"/>
+    </linearGradient>
+    <linearGradient id="shieldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3B82F6"/>
+      <stop offset="100%" stop-color="#1D4ED8"/>
+    </linearGradient>
+    <linearGradient id="glowGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#60A5FA" stop-opacity="0.6"/>
+      <stop offset="100%" stop-color="#2563EB" stop-opacity="0"/>
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="16" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+  </defs>
+
+  <!-- Background Rounded Squircle -->
+  <rect width="512" height="512" rx="112" fill="url(#bgGrad)"/>
+  <rect width="504" height="504" x="4" y="4" rx="108" fill="none" stroke="#334155" stroke-width="4"/>
+
+  <!-- Ambient Glow Behind Shield -->
+  <circle cx="256" cy="256" r="140" fill="url(#glowGrad)"/>
+
+  <!-- Medical Shield Body -->
+  <path d="M256 96 C336 96 376 112 376 112 C376 256 320 352 256 416 C192 352 136 256 136 112 C136 112 176 96 256 96 Z"
+        fill="url(#shieldGrad)"
+        filter="url(#glow)"/>
+
+  <!-- Inner Medical Cross (+) -->
+  <!-- Vertical bar -->
+  <rect x="236" y="196" width="40" height="120" rx="8" fill="#FFFFFF"/>
+  <!-- Horizontal bar -->
+  <rect x="196" y="236" width="120" height="40" rx="8" fill="#FFFFFF"/>
+
+  <!-- Sparkle Accent in corner -->
+  <path d="M380 140 Q395 140 395 125 Q395 140 410 140 Q395 140 395 155 Q395 140 380 140 Z" fill="#60A5FA"/>
+  <circle cx="120" cy="380" r="6" fill="#38BDF8"/>
+</svg>

@@ -10,9 +10,19 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   
-  <link rel="stylesheet" href="styles.css?v=2.1">
-  <!-- Client-side True PDF Generator -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <!-- Progressive Web App (PWA) Offline Support -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#2563EB">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="CoverPlus">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="icon" type="image/svg+xml" href="icons/icon.svg">
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+
+  <link rel="stylesheet" href="styles.css?v=2.2">
+  <!-- Client-side True PDF Generator (Local Offline) -->
+  <script src="libs/html2pdf.bundle.min.js"></script>
 </head>
 <body>
 
@@ -341,6 +351,11 @@
           <span class="db-status-dot"></span>
           <span id="dbStatusText">Supabase Cloud Live</span>
         </div>
+
+        <button class="btn-header-install" id="btnInstallPwa" style="display: none;" title="Install CoverPlus as Desktop/Mobile App">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <span>Install App</span>
+        </button>
 
         <div class="date-pill">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
@@ -1087,8 +1102,73 @@
 <!-- TOAST CONTAINER -->
 <div class="toast-container" id="toastContainer"></div>
 
-<!-- SUPABASE CLIENT SDK -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- LOCAL OFFLINE SDKs -->
+<script src="libs/supabase.js"></script>
 <script src="app.js"></script>
+
+<!-- PWA SERVICE WORKER REGISTRATION & OFFLINE HANDLER -->
+<script>
+  // Register Service Worker for offline support
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js')
+        .then((reg) => {
+          console.log('[CoverPlus PWA] Service Worker registered with scope:', reg.scope);
+        })
+        .catch((err) => {
+          console.warn('[CoverPlus PWA] Service Worker registration note:', err);
+        });
+    });
+  }
+
+  // PWA Install Prompt handling
+  let deferredInstallPrompt = null;
+  const btnInstall = document.getElementById('btnInstallPwa');
+
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredInstallPrompt = e;
+    if (btnInstall) {
+      btnInstall.style.display = 'inline-flex';
+    }
+  });
+
+  if (btnInstall) {
+    btnInstall.addEventListener('click', async () => {
+      if (!deferredInstallPrompt) return;
+      deferredInstallPrompt.prompt();
+      const { outcome } = await deferredInstallPrompt.userChoice;
+      console.log('[CoverPlus PWA] User install choice:', outcome);
+      deferredInstallPrompt = null;
+      btnInstall.style.display = 'none';
+    });
+  }
+
+  window.addEventListener('appinstalled', () => {
+    console.log('[CoverPlus PWA] App installed successfully');
+    if (btnInstall) btnInstall.style.display = 'none';
+  });
+
+  // Offline / Online notifications
+  window.addEventListener('offline', () => {
+    const text = document.getElementById('dbStatusText');
+    const pill = document.getElementById('dbStatusPill');
+    if (pill) pill.classList.add('offline');
+    if (text) text.textContent = 'Offline (Local Storage)';
+    if (window.showToast) {
+      window.showToast('Network disconnected. CoverPlus is running in 100% offline mode!', 'warning');
+    }
+  });
+
+  window.addEventListener('online', () => {
+    const text = document.getElementById('dbStatusText');
+    const pill = document.getElementById('dbStatusPill');
+    if (pill) pill.classList.remove('offline');
+    if (text) text.textContent = 'Supabase Cloud Live';
+    if (window.showToast) {
+      window.showToast('Network connection restored! Back online.', 'success');
+    }
+  });
+</script>
 </body>
 </html>
