@@ -1,0 +1,1094 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CoverPlus — Clinic &amp; Hospital Covers Billing Management System</title>
+  
+  <!-- Modern Typography & Signature Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="styles.css?v=2.1">
+  <!-- Client-side True PDF Generator -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+</head>
+<body>
+
+<!-- ==================== AUTH SCREEN ==================== -->
+<div id="auth-screen">
+  <div class="auth-modal-card">
+
+    <!-- LEFT PANEL: Dark Branding & 3D Showcase -->
+    <div class="auth-panel-left">
+      <!-- Ambient Glow Behind Elements -->
+      <div class="auth-glow-top"></div>
+      <div class="auth-glow-center"></div>
+
+      <!-- Floating Sparkle Particles -->
+      <span class="auth-particle p1">✦</span>
+      <span class="auth-particle p2">★</span>
+      <span class="auth-particle p3">✦</span>
+      <span class="auth-particle p4">●</span>
+
+      <!-- Left Main Content -->
+      <div class="auth-left-content">
+        <!-- Top Brand Header -->
+        <div class="auth-brand-header">
+          <div class="auth-brand-shield">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+              <path d="M12 8v8"/>
+              <path d="M8 12h8"/>
+            </svg>
+          </div>
+          <div class="auth-brand-info">
+            <div class="auth-brand-title">Cover<span class="brand-plus">Plus</span></div>
+            <div class="auth-brand-billing">Billing</div>
+            <div class="auth-brand-sub">Clinic &amp; Hospital Covers</div>
+          </div>
+        </div>
+
+        <!-- Tagline Pill -->
+        <div class="auth-tagline-pill">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.4 7.2h7.6l-6 4.8 2.4 7.2-6.4-4.8-6.4 4.8 2.4-7.2-6-4.8h7.6z"/></svg>
+          <span><strong>Smart</strong> Billing. Better Business.</span>
+        </div>
+
+        <!-- Hero Heading -->
+        <h1 class="auth-hero-heading">
+          The Smarter Way<br>
+          to <span class="grad-purple">Manage Clinic</span><br>
+          <span class="grad-pink">&amp; Hospital Cover</span><br>
+          <span class="grad-coral">Billing</span>
+        </h1>
+
+        <p class="auth-hero-subtext">
+          Create professional bills, manage your clinics,<br>
+          track payments and grow your business<br>
+          with confidence.
+        </p>
+      </div>
+
+      <!-- 3D Showcase Illustration Area (Edge to Edge) -->
+      <div class="auth-showcase-visual">
+        <img src="login_showcase.jpg" alt="CoverPlus 3D Billing Illustration" class="auth-showcase-render">
+      </div>
+    </div>
+
+    <!-- RIGHT PANEL: Crisp White Login / Sign-Up Form -->
+    <div class="auth-panel-right">
+      <!-- Top Language Picker -->
+      <div class="auth-top-bar">
+        <div class="auth-lang-btn">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+          <span>English</span>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+      </div>
+
+      <div class="auth-form-content">
+        <!-- Header -->
+        <h2 class="auth-main-title" id="authTitle">Welcome Back! <span class="wave-emoji">👋</span></h2>
+        <p class="auth-main-subtitle" id="authSubtitle">Sign in to continue to your account</p>
+
+        <!-- Dynamic Alert Message -->
+        <div class="auth-alert" id="authAlert" style="display: none;"></div>
+
+        <!-- Form -->
+        <form id="authMainForm" onsubmit="handleAuthSubmit(event)">
+          <!-- Email Field -->
+          <div class="auth-form-group">
+            <label class="auth-field-label" for="authEmailInput">Email Address</label>
+            <div class="auth-input-container">
+              <div class="auth-input-icon-box">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#E11D48" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+              </div>
+              <input type="email" id="authEmailInput" class="auth-clean-input" placeholder="Enter your email address" required autocomplete="email">
+            </div>
+          </div>
+
+          <!-- Password Field -->
+          <div class="auth-form-group">
+            <label class="auth-field-label" for="authPasswordInput">Password</label>
+            <div class="auth-input-container">
+              <div class="auth-input-icon-box">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#E11D48" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              </div>
+              <input type="password" id="authPasswordInput" class="auth-clean-input" placeholder="Enter your password" required autocomplete="current-password">
+              <button type="button" class="auth-password-toggle" onclick="togglePasswordView()" tabindex="-1">
+                <svg id="passEyeIcon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- Extra Confirm Password Field (Sign-Up mode only) -->
+          <div class="auth-form-group" id="authConfirmPassGroup" style="display: none;">
+            <label class="auth-field-label" for="authConfirmPasswordInput">Confirm Password</label>
+            <div class="auth-input-container">
+              <div class="auth-input-icon-box">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#E11D48" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+              </div>
+              <input type="password" id="authConfirmPasswordInput" class="auth-clean-input" placeholder="Re-enter your password">
+            </div>
+          </div>
+
+          <!-- Remember Me & Forgot Password Row -->
+          <div class="auth-options-row" id="authOptionsRow">
+            <label class="auth-checkbox-label" for="authRememberCheckbox">
+              <input type="checkbox" id="authRememberCheckbox" checked>
+              <span>Remember me</span>
+            </label>
+            <button type="button" class="auth-forgot-btn" onclick="handleForgotPassword()">Forgot password?</button>
+          </div>
+
+          <!-- Primary Submit CTA Button -->
+          <button type="submit" class="auth-submit-btn" id="btnAuthSubmit">
+            <svg id="btnAuthIcon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            <span id="btnAuthLabel">Sign In</span>
+            <span class="auth-btn-spinner" id="authBtnSpinner" style="display:none;"></span>
+          </button>
+        </form>
+
+        <!-- Instant 1-Click Demo Login Button -->
+        <button type="button" class="auth-demo-btn" onclick="handleDemoSignIn()">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+          <span>⚡ Instant 1-Click Demo Login (Direct Access)</span>
+        </button>
+
+        <!-- Divider OR -->
+        <div class="auth-or-separator">
+          <div class="auth-or-line"></div>
+          <span class="auth-or-text">OR CONTINUE WITH</span>
+          <div class="auth-or-line"></div>
+        </div>
+
+        <!-- Google Sign In Button -->
+        <button type="button" class="auth-google-btn" onclick="handleGoogleSignIn()">
+          <svg width="18" height="18" viewBox="0 0 24 24">
+            <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z"/>
+            <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.26v3.15C3.26 21.36 7.33 24 12 24z"/>
+            <path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.26C.46 8.16 0 9.99 0 12s.46 3.84 1.26 5.42l4.02-3.15z"/>
+            <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.26 6.58l4.02 3.15c.95-2.83 3.6-4.98 6.72-4.98z"/>
+          </svg>
+          <span>Sign in with Google</span>
+        </button>
+
+        <!-- Security Guarantee Pill / Card -->
+        <div class="auth-security-box">
+          <div class="auth-sec-icon-circle">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#E11D48" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+              <path d="M12 8v8"/>
+              <path d="M8 12h8"/>
+            </svg>
+          </div>
+          <div class="auth-sec-details">
+            <strong>Your data is 100% secure</strong>
+            <p>We use advanced encryption to keep your business information safe.</p>
+          </div>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#CBD5E1" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+        </div>
+
+        <!-- Footer Toggle Link -->
+        <div class="auth-footer-prompt">
+          <span id="authFooterPromptText">Don't have an account?</span>
+          <button type="button" class="auth-footer-action-link" id="authSwitchModeBtn" onclick="toggleAuthMode()">
+            <span id="authSwitchActionLabel">Create Account</span>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="app-container" id="app-container" style="display:none;">
+  <!-- LEFT SIDEBAR -->
+  <aside class="sidebar">
+    <!-- Brand Header -->
+    <div class="sidebar-brand" id="brandLogoClick">
+      <div class="brand-logo-wrap">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          <path d="M12 8v8"/>
+          <path d="M8 12h8"/>
+        </svg>
+      </div>
+      <div>
+        <div class="brand-name">CoverPlus</div>
+        <div class="brand-subtitle">Clinic &amp; Hospital Covers</div>
+      </div>
+    </div>
+
+    <!-- Navigation List -->
+    <nav class="sidebar-nav">
+      <div class="nav-section">
+        <button class="nav-item active" data-view="view-dashboard" id="nav-dashboard">
+          <div class="nav-item-left">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+            <span>Dashboard</span>
+          </div>
+        </button>
+      </div>
+
+      <div class="nav-section">
+        <span class="nav-section-title">MANAGE</span>
+        <button class="nav-item" data-view="view-clinics" id="nav-clinics">
+          <div class="nav-item-left">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 21h18"/><path d="M5 21V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16"/><path d="M9 7h1"/><path d="M9 11h1"/><path d="M9 15h1"/><path d="M14 7h1"/><path d="M14 11h1"/><path d="M14 15h1"/></svg>
+            <span>Clinics / Hospitals</span>
+          </div>
+        </button>
+        <button class="nav-item" data-view="view-create-bill" id="nav-create-bill">
+          <div class="nav-item-left">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+            <span>Create Bill</span>
+          </div>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <button class="nav-item" data-view="view-all-bills" id="nav-all-bills">
+          <div class="nav-item-left">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+            <span>All Bills</span>
+          </div>
+        </button>
+        <button class="nav-item" data-view="view-products" id="nav-products">
+          <div class="nav-item-left">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/></svg>
+            <span>Products / Sizes</span>
+          </div>
+        </button>
+      </div>
+
+      <div class="nav-section">
+        <span class="nav-section-title">REPORTS</span>
+        <button class="nav-item" data-view="view-sales-report" id="nav-sales-report">
+          <div class="nav-item-left">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+            <span>Sales Report</span>
+          </div>
+        </button>
+        <button class="nav-item" data-view="view-outstanding" id="nav-outstanding">
+          <div class="nav-item-left">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 14 14"/></svg>
+            <span>Outstanding</span>
+          </div>
+        </button>
+      </div>
+
+      <div class="nav-section">
+        <span class="nav-section-title">OTHERS</span>
+        <button class="nav-item" data-view="view-settings" id="nav-settings">
+          <div class="nav-item-left">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            <span>Settings</span>
+          </div>
+        </button>
+        <button class="nav-item" data-view="view-users" id="nav-users">
+          <div class="nav-item-left">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            <span>Users</span>
+          </div>
+        </button>
+        <button class="nav-item" id="nav-logout" style="color: #F87171;">
+          <div class="nav-item-left">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+            <span>Sign Out / Login</span>
+          </div>
+        </button>
+      </div>
+    </nav>
+
+    <!-- Need Help Card -->
+    <div class="sidebar-help-card">
+      <div class="help-card-title">Need Help?</div>
+      <div class="help-card-desc">We're here to help you manage your billing easily.</div>
+      <button class="btn-help" id="btnContactSupport">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 18v-6a9 9 0 0 1 18 0v6"/><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/></svg>
+        <span>Contact Support</span>
+      </button>
+    </div>
+
+    <!-- User Profile Card -->
+    <div class="sidebar-user-card" id="userProfileDropdown">
+      <div class="user-info-wrap">
+        <div class="user-avatar-initials" id="sidebarUserInitials">U</div>
+        <div class="user-details">
+          <span class="user-name" id="sidebarUserEmail">Loading...</span>
+          <span class="user-role">Administrator</span>
+        </div>
+      </div>
+      <button class="btn-logout" id="btnLogout" title="Sign Out">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      </button>
+    </div>
+  </aside>
+
+  <!-- MAIN WRAPPER -->
+  <main class="main-wrapper">
+    <!-- TOP HEADER -->
+    <header class="top-header">
+      <div class="header-greeting">
+        <h1 id="topHeaderGreeting">👋 Welcome back, Saju Mauji</h1>
+        <p id="topHeaderSubtitle">Here's what's happening with your business today.</p>
+      </div>
+
+      <div class="header-actions">
+        <div class="db-status-pill" id="dbStatusPill" title="Supabase Cloud Database Status">
+          <span class="db-status-dot"></span>
+          <span id="dbStatusText">Supabase Cloud Live</span>
+        </div>
+
+        <div class="date-pill">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          <span id="currentDateDisplay">29 Aug 2026</span>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+
+        <button class="btn-header-print" id="btnPrintTop">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+          Print Preview
+        </button>
+
+        <button class="btn-header-download" id="btnDownloadTop">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Download PDF
+        </button>
+      </div>
+    </header>
+
+    <!-- ==================== VIEW 1: DASHBOARD ==================== -->
+    <div class="page-view active" id="view-dashboard">
+      <!-- 4 STATISTICS CARDS -->
+      <section class="stats-grid">
+        <div class="stat-card purple">
+          <div class="stat-icon-circle">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 21h18"/><path d="M5 21V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16"/><path d="M9 7h1"/><path d="M9 11h1"/><path d="M9 15h1"/><path d="M14 7h1"/><path d="M14 11h1"/><path d="M14 15h1"/></svg>
+          </div>
+          <div class="stat-info">
+            <span class="stat-label">Total Clinics</span>
+            <span class="stat-value" id="statTotalClinics">0</span>
+            <span class="stat-trend" id="statTrendClinics">Active</span>
+          </div>
+        </div>
+
+        <div class="stat-card pink">
+          <div class="stat-icon-circle">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+          </div>
+          <div class="stat-info">
+            <span class="stat-label">Total Bills</span>
+            <span class="stat-value" id="statTotalBills">0</span>
+            <span class="stat-trend" id="statTrendBills">Invoices</span>
+          </div>
+        </div>
+
+        <div class="stat-card orange">
+          <div class="stat-icon-circle">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 3h12"/><path d="M6 8h12"/><path d="M6 13l8.5 8"/><path d="M6 13h3a4 4 0 0 0 0-8"/></svg>
+          </div>
+          <div class="stat-info">
+            <span class="stat-label">Total Sales</span>
+            <span class="stat-value" id="statTotalSales">₹ 0.00</span>
+            <span class="stat-trend" id="statTrendSales">This month</span>
+          </div>
+        </div>
+
+        <div class="stat-card teal">
+          <div class="stat-icon-circle">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="2" y="4" width="20" height="16" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/><circle cx="16" cy="15" r="1.5"/></svg>
+          </div>
+          <div class="stat-info">
+            <span class="stat-label">Pending Amount</span>
+            <span class="stat-value" id="statPendingAmount">₹ 0.00</span>
+            <span class="stat-trend" id="statTrendPending">Receivables</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- TWO-COLUMN WORKSPACE -->
+      <section class="billing-workspace">
+        <!-- LEFT: CREATE NEW BILL -->
+        <div class="billing-form-card">
+          <h2 class="card-title">Create New Bill</h2>
+
+          <div class="bill-top-fields">
+            <div class="form-group">
+              <label for="selectClinic">Select Clinic / Hospital</label>
+              <div class="input-with-icon">
+                <select id="selectClinic" class="form-control">
+                  <option value="">-- Select Clinic / Hospital --</option>
+                </select>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="inputInvoiceNo">Invoice No.</label>
+              <input type="text" id="inputInvoiceNo" class="form-control" value="INV-2026-00001" readonly>
+            </div>
+
+            <div class="form-group">
+              <label for="inputBillDate">Date</label>
+              <div class="input-with-icon">
+                <input type="text" id="inputBillDate" class="form-control" value="">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+              </div>
+            </div>
+          </div>
+
+          <!-- Horizontal Clinic Profile Strip -->
+          <div class="clinic-profile-strip">
+            <div class="clinic-avatar-circle">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 21h18"/><path d="M5 21V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16"/><path d="M9 7h1"/><path d="M9 11h1"/><path d="M9 15h1"/><path d="M14 7h1"/><path d="M14 11h1"/><path d="M14 15h1"/></svg>
+            </div>
+            <div class="clinic-strip-content">
+              <div class="clinic-profile-name" id="quickClinicName">No Clinic Selected</div>
+              <div class="clinic-profile-addr" id="quickClinicAddress">Please select a clinic or hospital from the dropdown above</div>
+            </div>
+            <div class="clinic-strip-action">
+              <button type="button" class="btn-strip-view" id="btnViewClinicDetails">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                <span>View Details</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Items Table -->
+          <div class="billing-items-card items-table-container">
+            <!-- Quick Add from Pre-saved Catalog Bar -->
+            <div class="quick-catalog-bar" id="quickCatalogBar">
+              <div class="quick-catalog-header">
+                <span class="quick-catalog-title">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#E11D48" stroke-width="2.5"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/></svg>
+                  Pre-Saved Products Catalog
+                </span>
+                <span class="quick-catalog-hint">⚡ Click any product to add to bill</span>
+              </div>
+              <div class="quick-catalog-pills" id="quickCatalogPills">
+                <!-- Populated dynamically with product chips -->
+              </div>
+            </div>
+
+            <!-- Datalist for fast autocomplete typing in the table -->
+            <datalist id="productsDatalist"></datalist>
+
+            <div class="items-table-wrapper styled-table-wrap">
+              <table class="styled-table">
+                <thead>
+                  <tr>
+                    <th class="center">#</th>
+                    <th>Item / Cover Line</th>
+                    <th>Size</th>
+                    <th class="center">Qty</th>
+                    <th class="right">Rate (₹)</th>
+                    <th class="right">Amount (₹)</th>
+                    <th class="center">Action</th>
+                  </tr>
+                </thead>
+                <tbody id="billingItemsBody"></tbody>
+              </table>
+            </div>
+            <button class="btn-add-item-dashed" id="btnAddItemRow">+ Add New Item</button>
+          </div>
+
+          <div class="billing-bottom-bar">
+            <div class="total-pill-group">
+              <span>Total Amount</span>
+              <div class="total-pill-box" id="formTotalDisplay">₹ 0.00</div>
+            </div>
+            <button class="btn-pill-reset" id="btnResetForm">Reset</button>
+            <button class="btn-pill-draft" id="btnSaveDraft">Save Draft</button>
+            <button class="btn-pill-generate" id="btnGenerateBill">Generate Bill</button>
+          </div>
+        </div>
+
+        <!-- RIGHT: INVOICE PREVIEW -->
+        <div class="invoice-preview-card" id="invoicePreviewContainer">
+          <h3 class="invoice-preview-title">Invoice Preview</h3>
+
+          <div class="invoice-sheet" id="invoiceSheetToExport">
+            <div class="invoice-wave-banner"></div>
+            <div class="invoice-sheet-body">
+              <div class="invoice-header-row">
+                <div class="invoice-brand-left">
+                  <div class="invoice-shield-icon">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M12 8v8"/><path d="M8 12h8"/></svg>
+                  </div>
+                  <div class="invoice-company-details">
+                    <h4 id="previewCompanyName">YOUR COMPANY NAME</h4>
+                    <div class="sub" id="previewCompanyTagline">Clinic &amp; Hospital Covers</div>
+                    <p id="previewCompanyAddress">123, Business Street, Chennai - 600001</p>
+                    <p id="previewCompanyContacts">support@yourcompany.com | www.yourcompany.com</p>
+                  </div>
+                </div>
+
+                <div class="invoice-meta-right">
+                  <div class="invoice-badge-pill">INVOICE</div>
+                  <div class="meta-line">Invoice No : <strong id="previewInvNo">INV-2026-00001</strong></div>
+                  <div class="meta-line">Date : <strong id="previewInvDate">—</strong></div>
+                  <div class="meta-line">Status : <strong id="previewInvStatus" style="color: #16A34A;">PAID</strong></div>
+                </div>
+              </div>
+
+              <div class="invoice-billing-to">
+                <div class="billing-to-lbl">Billing To</div>
+                <div class="billing-to-name" id="previewClinicName">Select Clinic / Hospital</div>
+                <div class="billing-to-addr" id="previewClinicAddress">Address will appear here upon selection</div>
+                <div class="billing-to-phone" id="previewClinicPhone">Phone: —</div>
+              </div>
+
+              <table class="invoice-render-table">
+                <thead>
+                  <tr>
+                    <th style="width: 24px; text-align: center;">#</th>
+                    <th>Item / Cover Size</th>
+                    <th style="width: 80px;">Size</th>
+                    <th style="width: 60px; text-align: center;">Qty</th>
+                    <th style="width: 75px; text-align: right;">Rate (₹)</th>
+                    <th style="width: 80px; text-align: right;">Amount (₹)</th>
+                  </tr>
+                </thead>
+                <tbody id="previewItemsBody"></tbody>
+              </table>
+
+              <div class="invoice-sheet-total-row">
+                <span class="lbl">TOTAL</span>
+                <div class="invoice-sheet-total-box" id="previewTotalDisplay">₹ 0.00</div>
+              </div>
+
+              <div class="invoice-sign-row">
+                <div class="thank-you-script">Thank you for your business!</div>
+                <div class="signature-block">
+                  <div class="signature-handwriting" id="previewSignatureName">Saju Mauji</div>
+                  <div class="signature-line-text">Authorized Signature</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="invoice-sheet-footer-banner">
+              <span id="previewFooterEmail">support@yourcompany.com</span>
+              <span id="previewFooterWebsite">www.yourcompany.com</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2 SIDE-BY-SIDE SUMMARY CARDS -->
+      <section class="bottom-tables-grid">
+        <div class="table-card">
+          <div class="table-card-header">
+            <h3 class="table-card-title">Clinics / Hospitals</h3>
+            <div class="table-toolbar">
+              <div class="search-box-pill">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input type="text" id="searchClinicInput" placeholder="Search clinic or hospital...">
+              </div>
+              <button class="btn-add-clinic-pill" id="btnOpenAddClinic">+ Add New Clinic</button>
+            </div>
+          </div>
+          <div class="data-table-container">
+            <table class="clean-table">
+              <thead>
+                <tr>
+                  <th>Clinic / Hospital Name</th>
+                  <th>Phone Number</th>
+                  <th>Address</th>
+                  <th style="text-align: center;">Action</th>
+                </tr>
+              </thead>
+              <tbody id="clinicsTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="table-card">
+          <div class="table-card-header">
+            <h3 class="table-card-title">Recent Bills</h3>
+            <div class="table-toolbar">
+              <div class="search-box-pill">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input type="text" id="searchBillsInput" placeholder="Search invoice...">
+              </div>
+              <button class="btn-filter-pill" id="btnFilterBills">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+                Filter
+              </button>
+            </div>
+          </div>
+          <div class="data-table-container">
+            <table class="clean-table">
+              <thead>
+                <tr>
+                  <th>Invoice No.</th>
+                  <th>Clinic / Hospital</th>
+                  <th>Date</th>
+                  <th style="text-align: right;">Total Amount</th>
+                  <th style="text-align: center;">Status</th>
+                  <th style="text-align: center;">Action</th>
+                </tr>
+              </thead>
+              <tbody id="recentBillsTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- ==================== VIEW 2: CLINICS & HOSPITALS ==================== -->
+    <div class="page-view" id="view-clinics">
+      <div class="page-header-banner">
+        <div>
+          <h2>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#E11D48" stroke-width="2.2"><path d="M3 21h18"/><path d="M5 21V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16"/><path d="M9 7h1"/><path d="M9 11h1"/><path d="M9 15h1"/><path d="M14 7h1"/><path d="M14 11h1"/><path d="M14 15h1"/></svg>
+            Clinics &amp; Hospitals Directory
+          </h2>
+          <p>Manage all registered medical centers, view lifetime billing history, and start new orders.</p>
+        </div>
+        <div class="table-toolbar">
+          <div class="search-box-pill">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" id="searchClinicPageInput" placeholder="Search clinics...">
+          </div>
+          <button class="btn-add-clinic-pill" id="btnOpenAddClinicPage">+ Add New Clinic</button>
+        </div>
+      </div>
+
+      <!-- Clinic Cards Grid -->
+      <div class="clinic-cards-grid" id="clinicCardsContainer">
+        <!-- Rendered via JS -->
+      </div>
+
+      <!-- Comprehensive Clinics Table -->
+      <div class="table-card">
+        <h3 class="table-card-title" style="margin-bottom: 16px;">All Registered Medical Facilities</h3>
+        <div class="data-table-container">
+          <table class="clean-table">
+            <thead>
+              <tr>
+                <th>Clinic / Hospital Name</th>
+                <th>Contact Person</th>
+                <th>Phone Number</th>
+                <th>Address</th>
+                <th style="text-align: center;">Total Orders</th>
+                <th style="text-align: right;">Lifetime Billed</th>
+                <th style="text-align: center;">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="clinicsFullTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== VIEW 3: CREATE BILL ==================== -->
+    <div class="page-view" id="view-create-bill">
+      <div class="page-header-banner">
+        <div>
+          <h2>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#F97316" stroke-width="2.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+            Create New Invoice
+          </h2>
+          <p>Generate professional bills for clinic &amp; hospital covers with real-time printable preview.</p>
+        </div>
+        <button class="btn-pill-generate" id="btnQuickNewBill">+ New Blank Bill</button>
+      </div>
+
+      <div id="createBillContainerView">
+        <!-- Will display the two-column workspace dynamically synced -->
+      </div>
+    </div>
+
+    <!-- ==================== VIEW 4: ALL BILLS ==================== -->
+    <div class="page-view" id="view-all-bills">
+      <div class="page-header-banner">
+        <div>
+          <h2>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" stroke-width="2.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+            All Bills &amp; Invoices Ledger
+          </h2>
+          <p>Complete historical registry of all generated bills with 1-click Paid/Unpaid status toggle and export options.</p>
+        </div>
+        <div class="table-toolbar">
+          <div class="search-box-pill">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" id="searchAllBillsInput" placeholder="Search invoice or clinic...">
+          </div>
+          <button class="btn-filter-pill" id="btnFilterAllBills">Filter: All</button>
+        </div>
+      </div>
+
+      <div class="table-card">
+        <div class="data-table-container">
+          <table class="clean-table">
+            <thead>
+              <tr>
+                <th>Invoice No.</th>
+                <th>Clinic / Hospital</th>
+                <th>Date</th>
+                <th>Items Summary</th>
+                <th style="text-align: right;">Total Amount</th>
+                <th style="text-align: center;">Payment Status (Click to Toggle)</th>
+                <th style="text-align: center;">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="allBillsFullTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== VIEW 5: PRODUCTS / SIZES ==================== -->
+    <div class="page-view" id="view-products">
+      <div class="page-header-banner">
+        <div>
+          <h2>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#06B6D4" stroke-width="2.2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/></svg>
+            Products &amp; Cover Sizes Catalog
+          </h2>
+          <p>Manage hospital linen and cover product lines with default dimensions and standard pricing.</p>
+        </div>
+        <button class="btn-add-clinic-pill" id="btnOpenAddProductModal">+ Add New Product</button>
+      </div>
+
+      <div class="table-card">
+        <div class="data-table-container">
+          <table class="clean-table">
+            <thead>
+              <tr>
+                <th>Product / Cover Line</th>
+                <th>Available Sizes</th>
+                <th>Material Specification</th>
+                <th style="text-align: right;">Standard Rate (₹)</th>
+                <th style="text-align: center;">Status</th>
+                <th style="text-align: center;">Quick Action</th>
+              </tr>
+            </thead>
+            <tbody id="productsTableBody">
+              <!-- Dynamically populated -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== VIEW 6: SALES REPORT ==================== -->
+    <div class="page-view" id="view-sales-report">
+      <div class="page-header-banner">
+        <div>
+          <h2>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#F43F5E" stroke-width="2.2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+            Sales Analytics &amp; Revenue Reports
+          </h2>
+          <p>Financial summaries, top client analysis, and hospital ordering volumes.</p>
+        </div>
+      </div>
+
+      <section class="stats-grid">
+        <div class="stat-card orange">
+          <div class="stat-info">
+            <span class="stat-label">This Month Sales</span>
+            <span class="stat-value" id="salesReportMonthly">₹ 0.00</span>
+            <span class="stat-trend" id="salesReportTrendSales">Calculated live</span>
+          </div>
+        </div>
+        <div class="stat-card pink">
+          <div class="stat-info">
+            <span class="stat-label">Total Invoices Generated</span>
+            <span class="stat-value" id="salesReportInvoices">0 Invoices</span>
+            <span class="stat-trend" id="salesReportCollectionRate">100% Rate</span>
+          </div>
+        </div>
+        <div class="stat-card purple">
+          <div class="stat-info">
+            <span class="stat-label">Average Order Value</span>
+            <span class="stat-value" id="salesReportAOV">₹ 0.00</span>
+            <span class="stat-trend">Per invoice</span>
+          </div>
+        </div>
+        <div class="stat-card teal">
+          <div class="stat-info">
+            <span class="stat-label">Active Hospital Accounts</span>
+            <span class="stat-value" id="salesReportAccounts">0 Facilities</span>
+            <span class="stat-trend">Registered</span>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- ==================== VIEW 7: OUTSTANDING ==================== -->
+    <div class="page-view" id="view-outstanding">
+      <div class="page-header-banner">
+        <div>
+          <h2>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#F97316" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 14 14"/></svg>
+            Outstanding &amp; Unpaid Invoices
+          </h2>
+          <p>Track all Unpaid hospital bills, total pending dues, and mark invoices as Paid.</p>
+        </div>
+      </div>
+
+      <div class="table-card">
+        <h3 class="table-card-title" style="margin-bottom: 14px;">Unpaid Hospital Bills List</h3>
+        <div class="data-table-container">
+          <table class="clean-table">
+            <thead>
+              <tr>
+                <th>Invoice No.</th>
+                <th>Clinic / Hospital</th>
+                <th>Date</th>
+                <th style="text-align: right;">Pending Amount</th>
+                <th style="text-align: center;">Status</th>
+                <th style="text-align: center;">Quick Action</th>
+              </tr>
+            </thead>
+            <tbody id="outstandingTableBody">
+              <!-- Dynamically populated -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== VIEW 8: SETTINGS ==================== -->
+    <div class="page-view" id="view-settings">
+      <div class="page-header-banner">
+        <div>
+          <h2>Settings &amp; Company Configuration</h2>
+          <p>Configure company details, invoice letterhead, taxes, and signature.</p>
+        </div>
+      </div>
+
+      <div class="table-card">
+        <form id="settingsForm" class="settings-form-grid">
+          <div class="form-group">
+            <label for="settingCompanyName">Company Legal Name</label>
+            <input type="text" id="settingCompanyName" class="form-control" placeholder="e.g. CoverPlus Medical / Your Company Name" required>
+          </div>
+          <div class="form-group">
+            <label for="settingTagline">Company Subtitle / Tagline</label>
+            <input type="text" id="settingTagline" class="form-control" placeholder="e.g. Clinic & Hospital Covers">
+          </div>
+          <div class="form-group">
+            <label for="settingAddress">Business Address</label>
+            <input type="text" id="settingAddress" class="form-control" placeholder="e.g. 123, Business Street, Chennai - 600001">
+          </div>
+          <div class="form-group">
+            <label for="settingPhone">Contact Phone Number</label>
+            <input type="text" id="settingPhone" class="form-control" placeholder="e.g. +91 98765 43210">
+          </div>
+          <div class="form-group">
+            <label for="settingEmail">Support Email</label>
+            <input type="email" id="settingEmail" class="form-control" placeholder="e.g. support@yourcompany.com">
+          </div>
+          <div class="form-group">
+            <label for="settingWebsite">Website URL</label>
+            <input type="text" id="settingWebsite" class="form-control" placeholder="e.g. www.yourcompany.com">
+          </div>
+          <div class="form-group">
+            <label for="settingPrefix">Invoice Number Prefix</label>
+            <input type="text" id="settingPrefix" class="form-control" placeholder="e.g. INV-2026-">
+          </div>
+          <div class="form-group">
+            <label for="settingSignature">Authorized Signatory Name</label>
+            <input type="text" id="settingSignature" class="form-control" placeholder="e.g. Saju Mauji">
+          </div>
+          <div style="grid-column: span 2; margin-top: 10px;">
+            <button type="submit" class="btn-pill-generate">Save Settings</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- ==================== VIEW 9: USERS ==================== -->
+    <div class="page-view" id="view-users">
+      <div class="page-header-banner">
+        <div>
+          <h2>User Accounts &amp; Access Control</h2>
+          <p>View your active login credentials, system permissions, and authorized team members.</p>
+        </div>
+      </div>
+
+      <!-- Explanatory Overview Card -->
+      <div class="users-info-banner">
+        <div class="users-info-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M12 8v8"/><path d="M8 12h8"/></svg>
+        </div>
+        <div class="users-info-text">
+          <h4>About the Users Section</h4>
+          <p>This section allows you to manage who can access and create bills in your CoverPlus system. You are currently logged in as the <strong>Primary Administrator</strong> with full master privileges.</p>
+        </div>
+      </div>
+
+      <!-- Active User Profile Card -->
+      <div class="table-card" style="margin-bottom: 24px;">
+        <h3 class="table-card-title" style="margin-bottom: 16px;">Currently Logged-In User</h3>
+        <div class="user-active-profile-row">
+          <div class="user-big-avatar" id="usersViewAvatar">U</div>
+          <div class="user-big-meta">
+            <h4 id="usersViewName">Saju Mauji</h4>
+            <p id="usersViewEmail">Loading...</p>
+            <div class="user-badges-list">
+              <span class="status-pill paid">👑 Administrator (Full Master Access)</span>
+              <span class="status-pill paid" style="background:#ECFDF5; color:#059669; border-color:#A7F3D0;">● Online &amp; Active</span>
+            </div>
+          </div>
+          <div class="user-actions-side">
+            <button class="btn-pill-reset" onclick="window.logout()">Sign Out / Switch Account</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Roles & Permissions Matrix -->
+      <div class="table-card">
+        <h3 class="table-card-title" style="margin-bottom: 16px;">System Access Roles &amp; Team Members</h3>
+        <div class="data-table-container">
+          <table class="clean-table">
+            <thead>
+              <tr>
+                <th>User / Operator</th>
+                <th>Login Email</th>
+                <th>Role &amp; Privileges</th>
+                <th>Access Level</th>
+                <th>Account Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="font-weight: 700; color: #1E293B;">
+                  <div style="display:flex; align-items:center; gap:8px;">
+                    <span style="display:inline-flex; width:28px; height:28px; border-radius:50%; background:#FDF2F8; color:#DB2777; align-items:center; justify-content:center; font-weight:800; font-size:12px;">SM</span>
+                    <span>Saju Mauji (You)</span>
+                  </div>
+                </td>
+                <td id="usersTableAdminEmail" style="color: #475569; font-weight: 600;">saju@coverplus.com</td>
+                <td>
+                  <strong style="color: #0F172A;">Administrator</strong>
+                  <div style="font-size: 11px; color: #64748B;">Can manage billing, clinics, pricing, settings &amp; cloud database</div>
+                </td>
+                <td><span class="status-pill paid">Full Master Access</span></td>
+                <td><span class="status-pill paid">Active</span></td>
+              </tr>
+              <tr>
+                <td style="font-weight: 700; color: #1E293B;">
+                  <div style="display:flex; align-items:center; gap:8px;">
+                    <span style="display:inline-flex; width:28px; height:28px; border-radius:50%; background:#EFF6FF; color:#2563EB; align-items:center; justify-content:center; font-weight:800; font-size:12px;">BO</span>
+                    <span>Billing Operator (Staff)</span>
+                  </div>
+                </td>
+                <td style="color: #475569; font-weight: 600;">operator@coverplus.com</td>
+                <td>
+                  <strong style="color: #0F172A;">Billing Staff</strong>
+                  <div style="font-size: 11px; color: #64748B;">Can generate and print invoices for registered clinics</div>
+                </td>
+                <td><span class="status-pill unpaid" style="background:#F1F5F9; color:#475569; border-color:#CBD5E1;">Billing &amp; Print Only</span></td>
+                <td><span class="status-pill unpaid" style="background:#F1F5F9; color:#475569; border-color:#CBD5E1;">Available</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+<!-- end #app-container -->
+
+<!-- MODAL: ADD NEW CLINIC -->
+<div class="modal-overlay" id="addClinicModal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h3>+ Add New Clinic / Hospital</h3>
+      <button class="btn-modal-close" id="btnCloseClinicModal">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <form id="addClinicForm">
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="newClinicName">Clinic / Hospital Name *</label>
+          <input type="text" id="newClinicName" class="form-control" placeholder="e.g. Apollo Speciality Clinic" required>
+        </div>
+        <div class="form-group">
+          <label for="newClinicPerson">Contact Person</label>
+          <input type="text" id="newClinicPerson" class="form-control" placeholder="e.g. Dr. R. Ramanathan">
+        </div>
+        <div class="form-group">
+          <label for="newClinicPhone">Phone Number *</label>
+          <input type="text" id="newClinicPhone" class="form-control" placeholder="e.g. +91 94440 12345" required>
+        </div>
+        <div class="form-group">
+          <label for="newClinicAddress">Full Address *</label>
+          <textarea id="newClinicAddress" class="form-control" rows="3" placeholder="e.g. 55, GST Road, Guindy, Chennai - 600032" required></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-pill-reset" id="btnCancelAddClinic">Cancel</button>
+        <button type="submit" class="btn-pill-generate">Save Clinic</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- MODAL: ADD NEW PRODUCT -->
+<div class="modal-overlay" id="addProductModal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h3>+ Add New Product Line</h3>
+      <button class="btn-modal-close" id="btnCloseProductModal">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <form id="addProductForm">
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="newProductName">Product Name *</label>
+          <input type="text" id="newProductName" class="form-control" placeholder="e.g. Bed Cover (Deluxe)" required>
+        </div>
+        <div class="form-group">
+          <label for="newProductSizes">Available Sizes *</label>
+          <input type="text" id="newProductSizes" class="form-control" placeholder="e.g. Small, Medium, Large" required>
+        </div>
+        <div class="form-group">
+          <label for="newProductSpec">Material Specification</label>
+          <input type="text" id="newProductSpec" class="form-control" placeholder="e.g. Non-woven SMS / Waterproof">
+        </div>
+        <div class="form-group">
+          <label for="newProductRate">Standard Unit Rate (₹) *</label>
+          <input type="number" id="newProductRate" class="form-control" placeholder="e.g. 75.00" step="0.50" required>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-pill-reset" id="btnCancelAddProduct">Cancel</button>
+        <button type="submit" class="btn-pill-generate">Save Product</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- MODAL: CLINIC DETAILS -->
+<div class="modal-overlay" id="clinicDetailsModal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h3 id="detailsModalTitle">Clinic Details</h3>
+      <button class="btn-modal-close" id="btnCloseDetailsModal">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body" id="detailsModalContent"></div>
+    <div class="modal-footer">
+      <button type="button" class="btn-pill-generate" id="btnSelectFromDetails">Create Bill for this Clinic</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST CONTAINER -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- SUPABASE CLIENT SDK -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="app.js"></script>
+</body>
+</html>
