@@ -17,7 +17,8 @@ const PRECACHE_ASSETS = [
   './env.js',
   './icons/icon-192.png',
   './icons/icon-512.png',
-  './icons/icon.svg'
+  './icons/icon.svg',
+  './login_showcase.jpg'
 ];
 
 // Install Event: pre-cache all core files

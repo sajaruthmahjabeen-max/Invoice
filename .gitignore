@@ -16,5 +16,6 @@ npm-debug.log*
 # Ignore root verification screenshots
 /*.png
 /*.jpg
+!login_showcase.jpg
 !icons/*.png
 !icons/*.svg
