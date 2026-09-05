@@ -1,7 +1,7 @@
 {
-  "name": "coverplus-billing",
+  "name": "trilion-thunders-billing",
   "version": "1.0.0",
-  "description": "CoverPlus — Clinic & Hospital Covers Billing Management System",
+  "description": "Trilion Thunders Company — Clinic & Hospital Covers Billing Management System",
   "main": "index.html",
   "scripts": {
     "build": "node build-env.js",

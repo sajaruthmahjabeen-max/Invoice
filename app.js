@@ -59,7 +59,7 @@
     const usersViewEmail = document.getElementById('usersViewEmail');
     const usersTableAdminEmail = document.getElementById('usersTableAdminEmail');
     if (!user) return;
-    const email = user.email || 'dr.admin@coverplus.com';
+    const email = user.email || 'dr.admin@trilionthunders.com';
     if (emailEl) emailEl.textContent = email;
     if (usersViewEmail) usersViewEmail.textContent = email;
     if (usersTableAdminEmail) usersTableAdminEmail.textContent = email;
@@ -111,7 +111,7 @@
 
     if (isSignUpMode) {
       if (title) title.innerHTML = 'Create Account <span class="wave-emoji">✨</span>';
-      if (subtitle) subtitle.textContent = 'Get started with CoverPlus Billing';
+      if (subtitle) subtitle.textContent = 'Get started with Trilion Thunders Company Billing';
       if (confirmGroup) confirmGroup.style.display = 'block';
       if (confirmInput) confirmInput.required = true;
       if (optionsRow) optionsRow.style.display = 'none';
@@ -173,7 +173,7 @@
     setAuthLoading(true);
     setTimeout(() => {
       setAuthLoading(false);
-      const demoUser = { email: 'dr.admin@coverplus.com' };
+      const demoUser = { email: 'dr.admin@trilionthunders.com' };
       localStorage.setItem('coverplus_demo_user', JSON.stringify(demoUser));
       showApp(demoUser);
     }, 200);
@@ -183,7 +183,7 @@
   window.handleGoogleSignIn = async function () {
     clearAuthAlert();
     if (!_supa) {
-      const demoUser = { email: 'google.user@coverplus.com' };
+      const demoUser = { email: 'google.user@trilionthunders.com' };
       localStorage.setItem('coverplus_demo_user', JSON.stringify(demoUser));
       showApp(demoUser);
       return;
@@ -193,7 +193,7 @@
       if (error) throw error;
     } catch (err) {
       console.warn('Google sign-in notice:', err);
-      const demoUser = { email: 'google.user@coverplus.com' };
+      const demoUser = { email: 'google.user@trilionthunders.com' };
       localStorage.setItem('coverplus_demo_user', JSON.stringify(demoUser));
       showApp(demoUser);
     }
@@ -227,7 +227,7 @@
     if (!_supa) {
       setTimeout(() => {
         setAuthLoading(false);
-        const demoUser = { email: email || 'dr.admin@coverplus.com' };
+        const demoUser = { email: email || 'dr.admin@trilionthunders.com' };
         localStorage.setItem('coverplus_demo_user', JSON.stringify(demoUser));
         showApp(demoUser);
       }, 300);
@@ -263,7 +263,7 @@
       }
     } catch (err) {
       console.warn('Auth catch fallback:', err);
-      const fallbackUser = { email: email || 'admin@coverplus.com' };
+      const fallbackUser = { email: email || 'admin@trilionthunders.com' };
       localStorage.setItem('coverplus_demo_user', JSON.stringify(fallbackUser));
       showApp(fallbackUser);
     } finally {
@@ -398,7 +398,8 @@ document.addEventListener('DOMContentLoaded', () => {
         body: JSON.stringify(records)
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      return await res.json();
+      const text = await res.text();
+      return text ? JSON.parse(text) : true;
     },
     async update(table, data, matchQuery) {
       const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${matchQuery}`, {
@@ -407,7 +408,8 @@ document.addEventListener('DOMContentLoaded', () => {
         body: JSON.stringify(data)
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      return await res.json();
+      const text = await res.text();
+      return text ? JSON.parse(text) : true;
     },
     async delete(table, matchQuery) {
       const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${matchQuery}`, {
@@ -460,12 +462,12 @@ document.addEventListener('DOMContentLoaded', () => {
     ],
     recentBills: [],
     settings: {
-      companyName: 'CoverPlus Medical Supplies',
+      companyName: 'Trilion Thunders Company',
       tagline: 'Clinic & Hospital Covers',
       address: '123, Business Street, Chennai - 600001',
       phone: '+91 98765 43210',
-      email: 'support@coverplus.com',
-      website: 'www.coverplus.com',
+      email: 'support@trilionthunders.com',
+      website: 'www.trilionthunders.com',
       invoicePrefix: 'INV-2026-',
       signature: 'Saju Mauji'
     },
@@ -601,6 +603,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const savedSettings = localStorage.getItem('coverplus_settings');
       if (savedSettings) state.settings = { ...state.settings, ...JSON.parse(savedSettings) };
+      if (state.settings.companyName === 'CoverPlus' || state.settings.companyName === 'CoverPlus Medical Supplies') {
+        state.settings.companyName = 'Trilion Thunders Company';
+      }
+      if (state.settings.email === 'support@coverplus.com') {
+        state.settings.email = 'support@trilionthunders.com';
+      }
+      if (state.settings.website === 'www.coverplus.com') {
+        state.settings.website = 'www.trilionthunders.com';
+      }
 
       const savedSelectedClinic = localStorage.getItem('coverplus_selected_clinic');
       if (savedSelectedClinic && state.clinics.some(c => c.id === savedSelectedClinic)) {
@@ -638,7 +649,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
-  // Render & Sync Settings UI across forms and preview
+  // Render & Sync Settings UI across forms, sidebar and preview
   const renderSettingsUI = () => {
     const s = state.settings;
     const setCompanyName = document.getElementById('settingCompanyName');
@@ -650,14 +661,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const setPrefix = document.getElementById('settingPrefix');
     const setSignature = document.getElementById('settingSignature');
 
-    if (setCompanyName) setCompanyName.value = s.companyName || '';
-    if (setTagline) setTagline.value = s.tagline || '';
-    if (setAddress) setAddress.value = s.address || '';
-    if (setPhone) setPhone.value = s.phone || '';
-    if (setEmail) setEmail.value = s.email || '';
-    if (setWebsite) setWebsite.value = s.website || '';
-    if (setPrefix) setPrefix.value = s.invoicePrefix || 'INV-2026-';
-    if (setSignature) setSignature.value = s.signature || '';
+    // Only update input values if the user is not actively typing in them
+    const activeEl = document.activeElement;
+    if (setCompanyName && activeEl !== setCompanyName) setCompanyName.value = s.companyName || '';
+    if (setTagline && activeEl !== setTagline) setTagline.value = s.tagline || '';
+    if (setAddress && activeEl !== setAddress) setAddress.value = s.address || '';
+    if (setPhone && activeEl !== setPhone) setPhone.value = s.phone || '';
+    if (setEmail && activeEl !== setEmail) setEmail.value = s.email || '';
+    if (setWebsite && activeEl !== setWebsite) setWebsite.value = s.website || '';
+    if (setPrefix && activeEl !== setPrefix) setPrefix.value = s.invoicePrefix || 'INV-2026-';
+    if (setSignature && activeEl !== setSignature) setSignature.value = s.signature || '';
 
     // Update Invoice Preview
     const previewCompanyName = document.getElementById('previewCompanyName');
@@ -678,6 +691,16 @@ document.addEventListener('DOMContentLoaded', () => {
     if (previewSignatureName) previewSignatureName.textContent = s.signature || 'Authorized Signature';
     if (previewFooterEmail) previewFooterEmail.textContent = s.email || '';
     if (previewFooterWebsite) previewFooterWebsite.textContent = s.website || '';
+
+    // Update sidebar branding dynamically
+    const sidebarBrandName = document.querySelector('.sidebar-brand .brand-name');
+    if (sidebarBrandName && s.companyName) {
+      sidebarBrandName.textContent = s.companyName;
+    }
+    const sidebarBrandSub = document.querySelector('.sidebar-brand .brand-subtitle');
+    if (sidebarBrandSub && s.tagline) {
+      sidebarBrandSub.textContent = s.tagline;
+    }
   };
 
   // Helper: Currency Formatter
@@ -713,8 +736,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const totalClinicsCount = state.clinics.length;
     const totalBillsCount = state.recentBills.length;
-    const totalSalesAmount = state.recentBills.filter(b => b.status === 'Paid').reduce((sum, b) => sum + b.amount, 0);
-    const pendingAmountVal = state.recentBills.filter(b => b.status === 'Pending').reduce((sum, b) => sum + b.amount, 0);
+    const totalSalesAmount = state.recentBills
+      .filter(b => b.status === 'Paid')
+      .reduce((sum, b) => sum + (Number(b.amount) || 0), 0);
+    const pendingAmountVal = state.recentBills
+      .filter(b => b.status !== 'Paid')
+      .reduce((sum, b) => sum + (Number(b.amount) || 0), 0);
 
     if (statTotalClinics) statTotalClinics.textContent = totalClinicsCount;
     if (statTotalBills) statTotalBills.textContent = totalBillsCount;
@@ -782,6 +809,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (createContainer && billingWorkspace) {
         createContainer.appendChild(billingWorkspace);
       }
+      renderSettingsUI();
       updateProductsCatalogUI();
     } else if (viewId === 'view-dashboard') {
       const dashboard = document.getElementById('view-dashboard');
@@ -790,6 +818,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (dashboard && billingWorkspace && bottomGrid) {
         dashboard.insertBefore(billingWorkspace, bottomGrid);
       }
+      renderSettingsUI();
       updateProductsCatalogUI();
     }
 
@@ -812,6 +841,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const selectClinic = document.getElementById('selectClinic');
   const inputInvoiceNo = document.getElementById('inputInvoiceNo');
   const inputBillDate = document.getElementById('inputBillDate');
+  const btnCalendarTrigger = document.getElementById('btnCalendarTrigger');
   const quickClinicName = document.getElementById('quickClinicName');
   const quickClinicAddress = document.getElementById('quickClinicAddress');
   const quickClinicPhone = document.getElementById('quickClinicPhone');
@@ -828,6 +858,70 @@ document.addEventListener('DOMContentLoaded', () => {
   const previewClinicPhone = document.getElementById('previewClinicPhone');
   const previewItemsBody = document.getElementById('previewItemsBody');
   const previewTotalDisplay = document.getElementById('previewTotalDisplay');
+
+  // Date Formatting Helpers (ISO <-> DD/MM/YYYY)
+  const formatIsoToDisplayDate = (isoStr) => {
+    if (!isoStr) return getTodayFormatted();
+    const parts = isoStr.split('-');
+    if (parts.length === 3) {
+      return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    }
+    return isoStr;
+  };
+
+  const formatDisplayToIsoDate = (dispStr) => {
+    if (!dispStr) {
+      const t = new Date();
+      return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
+    }
+    const parts = dispStr.split('/');
+    if (parts.length === 3) {
+      return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+    }
+    return dispStr;
+  };
+
+  // Sync Input Bill Date & Calendar Symbol Trigger
+  if (inputBillDate) {
+    inputBillDate.value = formatDisplayToIsoDate(state.invoiceDate || getTodayFormatted());
+
+    inputBillDate.addEventListener('change', () => {
+      if (inputBillDate.value) {
+        state.invoiceDate = formatIsoToDisplayDate(inputBillDate.value);
+        if (previewInvDate) previewInvDate.textContent = state.invoiceDate;
+      }
+    });
+
+    inputBillDate.addEventListener('click', () => {
+      try {
+        if (typeof inputBillDate.showPicker === 'function') {
+          inputBillDate.showPicker();
+        }
+      } catch (err) {}
+    });
+  }
+
+  if (btnCalendarTrigger && inputBillDate) {
+    btnCalendarTrigger.addEventListener('click', (e) => {
+      e.stopPropagation();
+      try {
+        if (typeof inputBillDate.showPicker === 'function') {
+          inputBillDate.showPicker();
+        } else {
+          inputBillDate.focus();
+        }
+      } catch (err) {
+        inputBillDate.focus();
+      }
+    });
+  }
+
+  // Update Top Navbar Today's Date Display
+  const currentDateDisplay = document.getElementById('currentDateDisplay');
+  if (currentDateDisplay) {
+    const todayNow = new Date();
+    currentDateDisplay.textContent = todayNow.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  }
 
   const renderClinicSelect = () => {
     if (!selectClinic) return;
@@ -1180,6 +1274,9 @@ document.addEventListener('DOMContentLoaded', () => {
       state.selectedClinicId = '';
       selectClinic.value = '';
       updateSelectedClinicUI();
+      state.invoiceDate = getTodayFormatted();
+      if (inputBillDate) inputBillDate.value = formatDisplayToIsoDate(state.invoiceDate);
+      if (previewInvDate) previewInvDate.textContent = state.invoiceDate;
       state.items = [{ id: Date.now(), name: '', size: 'Medium', qty: 1, rate: 0 }];
       calculateAndRenderItems();
       showToast('Ready for new bill entry', 'normal');
@@ -1322,7 +1419,12 @@ document.addEventListener('DOMContentLoaded', () => {
           <span class="status-pill unpaid clickable" onclick="window.toggleBillStatus('${bill.invoiceNo}')" title="Click to mark as Paid">Unpaid</span>
         </td>
         <td style="text-align: center;">
-          <button class="btn-pill-draft" onclick="window.toggleBillStatus('${bill.invoiceNo}')" style="padding: 4px 12px; font-size: 11.5px; font-weight: 700; color: #059669; border-color: #10B981;">✓ Mark Paid</button>
+          <div class="action-icons-group" style="justify-content: center; gap: 8px;">
+            <button class="btn-pill-draft" onclick="window.toggleBillStatus('${bill.invoiceNo}')" style="padding: 4px 12px; font-size: 11.5px; font-weight: 700; color: #059669; border-color: #10B981;">✓ Mark Paid</button>
+            <button class="btn-action-icon delete" onclick="window.deleteBill('${bill.invoiceNo}')" title="Delete Invoice">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#EF4444" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            </button>
+          </div>
         </td>
       `;
       tableBody.appendChild(tr);
@@ -1373,6 +1475,9 @@ document.addEventListener('DOMContentLoaded', () => {
               </button>
               <button class="btn-action-icon" onclick="window.downloadInvoicePdf('${bill.invoiceNo}')" title="Download PDF File">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              </button>
+              <button class="btn-action-icon delete" onclick="window.deleteBill('${bill.invoiceNo}')" title="Delete Invoice">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#EF4444" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
               </button>
             </div>
           </td>
@@ -1426,6 +1531,9 @@ document.addEventListener('DOMContentLoaded', () => {
             <button class="btn-action-icon" onclick="window.downloadInvoicePdf('${bill.invoiceNo}')" title="Download PDF File">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
             </button>
+            <button class="btn-action-icon delete" onclick="window.deleteBill('${bill.invoiceNo}')" title="Delete Invoice">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#EF4444" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            </button>
           </div>
         </td>
       `;
@@ -1435,16 +1543,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // --- INVOICE PREVIEW & RENDERING HELPERS ---
   window.populateInvoicePreview = (bill) => {
+    // Keep company letterhead and signature in sync
+    renderSettingsUI();
+
     if (!bill) {
       // Default to live active form in state
       const clinic = state.clinics.find(c => c.id === state.selectedClinicId);
       if (previewInvNo) previewInvNo.textContent = state.invoiceNumber;
       if (previewInvDate) previewInvDate.textContent = state.invoiceDate || getTodayFormatted();
-      const previewInvStatus = document.getElementById('previewInvStatus');
-      if (previewInvStatus) {
-        previewInvStatus.textContent = 'PAID';
-        previewInvStatus.style.color = '#16A34A';
-      }
       if (clinic) {
         if (previewClinicName) previewClinicName.textContent = clinic.name;
         if (previewClinicAddress) previewClinicAddress.textContent = clinic.address;
@@ -1456,11 +1562,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (previewInvNo) previewInvNo.textContent = bill.invoiceNo;
     if (previewInvDate) previewInvDate.textContent = bill.date;
-    const previewInvStatus = document.getElementById('previewInvStatus');
-    if (previewInvStatus) {
-      previewInvStatus.textContent = (bill.status || 'Paid').toUpperCase();
-      previewInvStatus.style.color = bill.status === 'Paid' ? '#16A34A' : '#E11D48';
-    }
 
     const clinic = state.clinics.find(c => c.id === bill.clinicId || c.name === bill.clinicName);
     if (previewClinicName) previewClinicName.textContent = bill.clinicName || (clinic ? clinic.name : 'Clinic / Hospital');
@@ -1720,7 +1821,6 @@ document.addEventListener('DOMContentLoaded', () => {
           <div class="badge">INVOICE</div>
           <div class="meta-line">Invoice No : <strong>${invNo}</strong></div>
           <div class="meta-line">Date : <strong>${invDate}</strong></div>
-          <div class="meta-line">Status : <strong style="color:${statusColor};">${invStatus.toUpperCase()}</strong></div>
         </div>
       </div>
 
@@ -1842,6 +1942,36 @@ document.addEventListener('DOMContentLoaded', () => {
     updateStatsUI();
     cloudDeleteClinic(clinicId);
     showToast('Clinic facility deleted', 'normal');
+  };
+
+  window.deleteBill = async (invoiceNo) => {
+    if (!confirm(`Are you sure you want to permanently delete invoice ${invoiceNo}?`)) return;
+
+    const billToDelete = state.recentBills.find(b => b.invoiceNo === invoiceNo);
+    if (!billToDelete) return;
+
+    // Remove bill from local state
+    state.recentBills = state.recentBills.filter(b => b.invoiceNo !== invoiceNo);
+
+    // Recalculate clinic orders & total billed
+    state.clinics.forEach(c => {
+      const cBills = state.recentBills.filter(b => b.clinicId === c.id || b.clinicName === c.name);
+      c.totalOrders = cBills.length;
+      c.totalBilled = cBills.reduce((sum, b) => sum + (Number(b.amount) || 0), 0);
+    });
+
+    // Save and instantly update dashboard stat cards and tables
+    saveLocalData();
+    updateStatsUI();
+    renderRecentBillsTable();
+    renderAllBillsPageView();
+    renderOutstandingTable();
+    renderClinicsPageView();
+    recalculateNextInvoiceNumber();
+
+    // Async sync deletion to Cloud Supabase
+    cloudDeleteBill(invoiceNo);
+    showToast(`Invoice ${invoiceNo} deleted successfully`, 'normal');
   };
 
   const renderProductsTable = () => {
@@ -2016,6 +2146,51 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
+  const cloudDeleteClinic = async (clinicId) => {
+    try {
+      await cloudDb.delete('clinics', `id=eq.${clinicId}`);
+      return true;
+    } catch (err) {
+      console.error('Cloud delete clinic error:', err);
+      return false;
+    }
+  };
+
+  const cloudDeleteBill = async (invoiceNo) => {
+    try {
+      await cloudDb.delete('bills', `invoice_no=eq.${invoiceNo}`);
+      return true;
+    } catch (err) {
+      console.error('Cloud delete bill error:', err);
+      return false;
+    }
+  };
+
+  const cloudSaveSettings = async (settings) => {
+    try {
+      const payload = {
+        company_name: settings.companyName,
+        tagline: settings.tagline,
+        address: settings.address,
+        phone: settings.phone,
+        email: settings.email,
+        website: settings.website,
+        invoice_prefix: settings.invoicePrefix,
+        authorized_signature: settings.signature,
+        updated_at: new Date().toISOString()
+      };
+      try {
+        await cloudDb.update('company_settings', payload, 'id=eq.1');
+      } catch (patchErr) {
+        await cloudDb.insert('company_settings', [{ id: 1, ...payload }]);
+      }
+      return true;
+    } catch (err) {
+      console.error('Cloud save settings error:', err);
+      return false;
+    }
+  };
+
   const cloudFetchAllData = async () => {
     try {
       const [dbClinics, dbBills, dbProducts, dbSettings] = await Promise.all([
@@ -2039,7 +2214,7 @@ document.addEventListener('DOMContentLoaded', () => {
         hasCloudData = true;
       }
 
-      if (Array.isArray(dbBills) && dbBills.length > 0) {
+      if (Array.isArray(dbBills)) {
         state.recentBills = dbBills.map(b => ({
           id: b.id,
           invoiceNo: b.invoice_no,
@@ -2072,16 +2247,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
       if (Array.isArray(dbSettings) && dbSettings.length > 0 && dbSettings[0]) {
         const cs = dbSettings[0];
-        state.settings = {
-          companyName: cs.company_name || state.settings.companyName,
-          tagline: cs.tagline || state.settings.tagline,
-          address: cs.address || state.settings.address,
-          phone: cs.phone || state.settings.phone,
-          email: cs.email || state.settings.email,
-          website: cs.website || state.settings.website,
-          invoicePrefix: cs.invoice_prefix || state.settings.invoicePrefix,
-          signature: cs.authorized_signature || state.settings.signature
-        };
+        const isEditingSettings = document.activeElement && document.activeElement.closest && document.activeElement.closest('#settingsForm');
+        if (!isEditingSettings) {
+          state.settings = {
+            companyName: cs.company_name || state.settings.companyName,
+            tagline: cs.tagline || state.settings.tagline,
+            address: cs.address || state.settings.address,
+            phone: cs.phone || state.settings.phone,
+            email: cs.email || state.settings.email,
+            website: cs.website || state.settings.website,
+            invoicePrefix: cs.invoice_prefix || state.settings.invoicePrefix,
+            signature: cs.authorized_signature || state.settings.signature
+          };
+          saveLocalData();
+        }
         hasCloudData = true;
       }
 
@@ -2265,6 +2444,79 @@ document.addEventListener('DOMContentLoaded', () => {
       const modal = document.getElementById('addProductModal');
       if (modal) modal.classList.remove('active');
       showToast(`Product "${name}" added!`, 'success');
+    });
+  }
+
+  const settingsForm = document.getElementById('settingsForm');
+  const syncSettingsFromInputs = () => {
+    const setCompanyName = document.getElementById('settingCompanyName');
+    const setTagline = document.getElementById('settingTagline');
+    const setAddress = document.getElementById('settingAddress');
+    const setPhone = document.getElementById('settingPhone');
+    const setEmail = document.getElementById('settingEmail');
+    const setWebsite = document.getElementById('settingWebsite');
+    const setPrefix = document.getElementById('settingPrefix');
+    const setSignature = document.getElementById('settingSignature');
+
+    if (setCompanyName && setCompanyName.value.trim()) {
+      state.settings.companyName = setCompanyName.value.trim();
+    }
+    if (setTagline) state.settings.tagline = setTagline.value.trim();
+    if (setAddress) state.settings.address = setAddress.value.trim();
+    if (setPhone) state.settings.phone = setPhone.value.trim();
+    if (setEmail) state.settings.email = setEmail.value.trim();
+    if (setWebsite) state.settings.website = setWebsite.value.trim();
+    if (setPrefix && setPrefix.value.trim()) {
+      state.settings.invoicePrefix = setPrefix.value.trim();
+    }
+    if (setSignature) state.settings.signature = setSignature.value.trim();
+
+    // Persist to local storage
+    saveLocalData();
+
+    // Immediately sync Settings UI across invoice preview & sidebar
+    renderSettingsUI();
+    recalculateNextInvoiceNumber();
+  };
+
+  // Attach live input listeners to all settings fields
+  ['settingCompanyName', 'settingTagline', 'settingAddress', 'settingPhone', 'settingEmail', 'settingWebsite', 'settingPrefix', 'settingSignature'].forEach(id => {
+    const inputEl = document.getElementById(id);
+    if (inputEl) {
+      inputEl.addEventListener('input', syncSettingsFromInputs);
+    }
+  });
+
+  if (settingsForm) {
+    settingsForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      syncSettingsFromInputs();
+
+      const submitBtn = settingsForm.querySelector('button[type="submit"]');
+      const origText = submitBtn ? submitBtn.textContent : 'Save Settings';
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Saving...';
+      }
+
+      try {
+        // Sync with Supabase Cloud
+        const cloudOk = await cloudSaveSettings(state.settings);
+        if (cloudOk) {
+          showToast('Company settings saved & synced to cloud!', 'success');
+        } else {
+          showToast('Company settings saved locally', 'normal');
+        }
+      } catch (err) {
+        console.error('Settings submit error:', err);
+        showToast('Company settings saved locally', 'normal');
+      } finally {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = origText;
+        }
+      }
     });
   }
 

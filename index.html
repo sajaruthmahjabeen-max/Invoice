@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CoverPlus — Clinic &amp; Hospital Covers Billing Management System</title>
+  <title>Trilion Thunders Company — Clinic &amp; Hospital Covers Billing Management System</title>
   
   <!-- Modern Typography & Signature Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -15,12 +15,12 @@
   <meta name="theme-color" content="#2563EB">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="CoverPlus">
+  <meta name="apple-mobile-web-app-title" content="Trilion Thunders Company">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
   <link rel="icon" type="image/svg+xml" href="icons/icon.svg">
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
 
-  <link rel="stylesheet" href="styles.css?v=2.2">
+  <link rel="stylesheet" href="styles.css?v=2.5">
   <!-- Client-side True PDF Generator (Local Offline) -->
   <script src="libs/html2pdf.bundle.min.js"></script>
 </head>
@@ -54,8 +54,8 @@
             </svg>
           </div>
           <div class="auth-brand-info">
-            <div class="auth-brand-title">Cover<span class="brand-plus">Plus</span></div>
-            <div class="auth-brand-billing">Billing</div>
+            <div class="auth-brand-title">Trilion<span class="brand-plus"> Thunders</span></div>
+            <div class="auth-brand-billing">Company Billing</div>
             <div class="auth-brand-sub">Clinic &amp; Hospital Covers</div>
           </div>
         </div>
@@ -83,7 +83,7 @@
 
       <!-- 3D Showcase Illustration Area (Edge to Edge) -->
       <div class="auth-showcase-visual">
-        <img src="login_showcase.jpg" alt="CoverPlus 3D Billing Illustration" class="auth-showcase-render">
+        <img src="login_showcase.jpg" alt="Trilion Thunders Company 3D Billing Illustration" class="auth-showcase-render">
       </div>
     </div>
 
@@ -228,7 +228,7 @@
         </svg>
       </div>
       <div>
-        <div class="brand-name">CoverPlus</div>
+        <div class="brand-name">Trilion Thunders Company</div>
         <div class="brand-subtitle">Clinic &amp; Hospital Covers</div>
       </div>
     </div>
@@ -352,7 +352,7 @@
           <span id="dbStatusText">Supabase Cloud Live</span>
         </div>
 
-        <button class="btn-header-install" id="btnInstallPwa" style="display: none;" title="Install CoverPlus as Desktop/Mobile App">
+        <button class="btn-header-install" id="btnInstallPwa" style="display: none;" title="Install Trilion Thunders Company as Desktop/Mobile App">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           <span>Install App</span>
         </button>
@@ -448,9 +448,11 @@
 
             <div class="form-group">
               <label for="inputBillDate">Date</label>
-              <div class="input-with-icon">
-                <input type="text" id="inputBillDate" class="form-control" value="">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+              <div class="input-with-icon date-input-wrapper">
+                <input type="date" id="inputBillDate" class="form-control date-picker-input" value="">
+                <button type="button" class="btn-calendar-trigger" id="btnCalendarTrigger" title="Choose Date" aria-label="Choose Date">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                </button>
               </div>
             </div>
           </div>
@@ -545,7 +547,6 @@
                   <div class="invoice-badge-pill">INVOICE</div>
                   <div class="meta-line">Invoice No : <strong id="previewInvNo">INV-2026-00001</strong></div>
                   <div class="meta-line">Date : <strong id="previewInvDate">—</strong></div>
-                  <div class="meta-line">Status : <strong id="previewInvStatus" style="color: #16A34A;">PAID</strong></div>
                 </div>
               </div>
 
@@ -881,7 +882,7 @@
         <form id="settingsForm" class="settings-form-grid">
           <div class="form-group">
             <label for="settingCompanyName">Company Legal Name</label>
-            <input type="text" id="settingCompanyName" class="form-control" placeholder="e.g. CoverPlus Medical / Your Company Name" required>
+            <input type="text" id="settingCompanyName" class="form-control" placeholder="e.g. Trilion Thunders Company / Your Company Name" required>
           </div>
           <div class="form-group">
             <label for="settingTagline">Company Subtitle / Tagline</label>
@@ -934,7 +935,7 @@
         </div>
         <div class="users-info-text">
           <h4>About the Users Section</h4>
-          <p>This section allows you to manage who can access and create bills in your CoverPlus system. You are currently logged in as the <strong>Primary Administrator</strong> with full master privileges.</p>
+          <p>This section allows you to manage who can access and create bills in your Trilion Thunders Company system. You are currently logged in as the <strong>Primary Administrator</strong> with full master privileges.</p>
         </div>
       </div>
 
@@ -979,7 +980,7 @@
                     <span>Saju Mauji (You)</span>
                   </div>
                 </td>
-                <td id="usersTableAdminEmail" style="color: #475569; font-weight: 600;">saju@coverplus.com</td>
+                <td id="usersTableAdminEmail" style="color: #475569; font-weight: 600;">saju@trilionthunders.com</td>
                 <td>
                   <strong style="color: #0F172A;">Administrator</strong>
                   <div style="font-size: 11px; color: #64748B;">Can manage billing, clinics, pricing, settings &amp; cloud database</div>
@@ -994,7 +995,7 @@
                     <span>Billing Operator (Staff)</span>
                   </div>
                 </td>
-                <td style="color: #475569; font-weight: 600;">operator@coverplus.com</td>
+                <td style="color: #475569; font-weight: 600;">operator@trilionthunders.com</td>
                 <td>
                   <strong style="color: #0F172A;">Billing Staff</strong>
                   <div style="font-size: 11px; color: #64748B;">Can generate and print invoices for registered clinics</div>
@@ -1105,7 +1106,7 @@
 <!-- LOCAL OFFLINE SDKs & CONFIG -->
 <script src="libs/supabase.js"></script>
 <script src="env.js"></script>
-<script src="app.js"></script>
+<script src="app.js?v=2.7"></script>
 
 <!-- PWA SERVICE WORKER REGISTRATION & OFFLINE HANDLER -->
 <script>
@@ -1114,10 +1115,11 @@
     window.addEventListener('load', () => {
       navigator.serviceWorker.register('./sw.js')
         .then((reg) => {
-          console.log('[CoverPlus PWA] Service Worker registered with scope:', reg.scope);
+          reg.update();
+          console.log('[Trilion Thunders Company PWA] Service Worker registered with scope:', reg.scope);
         })
         .catch((err) => {
-          console.warn('[CoverPlus PWA] Service Worker registration note:', err);
+          console.warn('[Trilion Thunders Company PWA] Service Worker registration note:', err);
         });
     });
   }
@@ -1139,14 +1141,14 @@
       if (!deferredInstallPrompt) return;
       deferredInstallPrompt.prompt();
       const { outcome } = await deferredInstallPrompt.userChoice;
-      console.log('[CoverPlus PWA] User install choice:', outcome);
+      console.log('[Trilion Thunders Company PWA] User install choice:', outcome);
       deferredInstallPrompt = null;
       btnInstall.style.display = 'none';
     });
   }
 
   window.addEventListener('appinstalled', () => {
-    console.log('[CoverPlus PWA] App installed successfully');
+    console.log('[Trilion Thunders Company PWA] App installed successfully');
     if (btnInstall) btnInstall.style.display = 'none';
   });
 
@@ -1157,7 +1159,7 @@
     if (pill) pill.classList.add('offline');
     if (text) text.textContent = 'Offline (Local Storage)';
     if (window.showToast) {
-      window.showToast('Network disconnected. CoverPlus is running in 100% offline mode!', 'warning');
+      window.showToast('Network disconnected. Trilion Thunders Company is running in 100% offline mode!', 'warning');
     }
   });
 

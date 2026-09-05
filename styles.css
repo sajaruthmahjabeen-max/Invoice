@@ -597,11 +597,64 @@ button, input, select, textarea {
   align-items: center;
 }
 
-.input-with-icon svg {
+.input-with-icon > svg {
   position: absolute;
   right: 12px;
   color: #94A3B8;
   pointer-events: none;
+}
+
+/* Enhanced Date Picker & Calendar Trigger Button */
+.date-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.date-input-wrapper .form-control {
+  padding-right: 36px;
+  cursor: pointer;
+}
+
+.btn-calendar-trigger {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  padding: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #64748B;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  z-index: 2;
+}
+
+.btn-calendar-trigger:hover {
+  color: #2563EB;
+  background: rgba(37, 99, 235, 0.09);
+}
+
+.btn-calendar-trigger svg {
+  position: static !important;
+  pointer-events: none !important;
+  color: inherit !important;
+}
+
+/* Ensure WebKit / Chromium native calendar picker click area overlays nicely */
+.date-picker-input::-webkit-calendar-picker-indicator {
+  position: absolute;
+  right: 6px;
+  top: 0;
+  bottom: 0;
+  width: 30px;
+  opacity: 0;
+  cursor: pointer;
+  z-index: 3;
 }
 
 .form-control {

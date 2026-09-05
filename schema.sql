@@ -1,5 +1,5 @@
 -- ===================================================
--- CoverPlus (KMS) — Supabase Database Schema
+-- Trillion Thunders (KMS) — Supabase Database Schema
 -- Run this SQL in your Supabase SQL Editor
 -- Dashboard: https://supabase.com/dashboard/project/qhuhngicocldbcmbegfg/sql
 -- ===================================================
@@ -45,12 +45,12 @@ CREATE TABLE IF NOT EXISTS products (
 -- 5. COMPANY PROFILE & SETTINGS TABLE
 CREATE TABLE IF NOT EXISTS company_settings (
   id INT PRIMARY KEY DEFAULT 1,
-  company_name TEXT NOT NULL DEFAULT 'CoverPlus',
+  company_name TEXT NOT NULL DEFAULT 'Trilion Thunders Company',
   tagline TEXT DEFAULT 'Clinic & Hospital Covers',
   address TEXT DEFAULT '123, Business Street, Chennai - 600001',
   phone TEXT DEFAULT '+91 98765 43210',
-  email TEXT DEFAULT 'support@yourcompany.com',
-  website TEXT DEFAULT 'www.yourcompany.com',
+  email TEXT DEFAULT 'support@trilionthunders.com',
+  website TEXT DEFAULT 'www.trilionthunders.com',
   invoice_prefix TEXT DEFAULT 'INV-2026-',
   authorized_signature TEXT DEFAULT 'Saju Mauji',
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
@@ -58,7 +58,7 @@ CREATE TABLE IF NOT EXISTS company_settings (
 
 -- 6. Insert Default Company Settings Row
 INSERT INTO company_settings (id, company_name, tagline, address, phone, email, website, invoice_prefix, authorized_signature)
-VALUES (1, 'CoverPlus', 'Clinic & Hospital Covers', '123, Business Street, Chennai - 600001', '+91 98765 43210', 'support@yourcompany.com', 'www.yourcompany.com', 'INV-2026-', 'Saju Mauji')
+VALUES (1, 'Trilion Thunders Company', 'Clinic & Hospital Covers', '123, Business Street, Chennai - 600001', '+91 98765 43210', 'support@trilionthunders.com', 'www.trilionthunders.com', 'INV-2026-', 'Saju Mauji')
 ON CONFLICT (id) DO NOTHING;
 
 -- 7. ENABLE ROW LEVEL SECURITY (RLS) & ALLOW ANONYMOUS ACCESS FOR THIS APP

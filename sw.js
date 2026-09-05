@@ -1,9 +1,9 @@
 /* ================================================================
-   CoverPlus Service Worker (sw.js)
-   Enables 100% full offline usage on Live Vercel URLs & Installed PWAs
+   Trilion Thunders Company Service Worker (sw.js)
+   Enables 100% full offline usage with Network-First code updates
 ================================================================ */
 
-const CACHE_NAME = 'coverplus-cache-v1';
+const CACHE_NAME = 'trilion-thunders-cache-v6';
 
 // Core assets to pre-cache immediately upon install
 const PRECACHE_ASSETS = [
@@ -21,18 +21,17 @@ const PRECACHE_ASSETS = [
   './login_showcase.jpg'
 ];
 
-// Install Event: pre-cache all core files
+// Install Event: pre-cache all core files and skip waiting
 self.addEventListener('install', (event) => {
+  self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll(PRECACHE_ASSETS);
-    }).then(() => {
-      return self.skipWaiting();
     })
   );
 });
 
-// Activate Event: clear old caches
+// Activate Event: clear old caches and claim clients immediately
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) => {
@@ -49,7 +48,7 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Fetch Event: Offline-first strategy with background revalidation
+// Fetch Event: Network-First for app code, Stale-While-Revalidate for fonts/assets
 self.addEventListener('fetch', (event) => {
   const req = event.request;
 
@@ -58,7 +57,7 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(req.url);
 
-  // Ignore chrome-extension or non-http requests
+  // Ignore non-http requests
   if (!url.protocol.startsWith('http')) return;
 
   // For Google Fonts or external CDNs: Stale-While-Revalidate
@@ -78,22 +77,48 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // For all local app assets: Cache First, fallback to Network
+  // Network-First for HTML, JS, CSS and navigation so user ALWAYS gets latest updates
+  const isAppCode = req.mode === 'navigate' || 
+                    url.pathname.endsWith('.html') || 
+                    url.pathname.endsWith('.js') || 
+                    url.pathname.endsWith('.css') || 
+                    url.pathname.endsWith('.json') ||
+                    url.pathname === '/';
+
+  if (isAppCode) {
+    event.respondWith(
+      fetch(req)
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const resClone = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(req, resClone));
+          }
+          return networkResponse;
+        })
+        .catch(() => {
+          return caches.match(req).then((cached) => {
+            if (cached) return cached;
+            if (req.mode === 'navigate') {
+              return caches.match('./index.html') || caches.match('./');
+            }
+          });
+        })
+    );
+    return;
+  }
+
+  // For static media (images, icons): Cache-First with background revalidation
   event.respondWith(
     caches.match(req).then((cachedResponse) => {
       if (cachedResponse) {
-        // Optionally update cache in background when online
         fetch(req).then((networkResponse) => {
           if (networkResponse && networkResponse.status === 200) {
             caches.open(CACHE_NAME).then((cache) => cache.put(req, networkResponse));
           }
-        }).catch(() => {
-          // Ignore offline errors during background sync
-        });
+        }).catch(() => {});
         return cachedResponse;
       }
 
-      // If not in cache, fetch from network and store in cache
       return fetch(req).then((networkResponse) => {
         if (!networkResponse || networkResponse.status !== 200 || networkResponse.type === 'opaque') {
           return networkResponse;
@@ -103,11 +128,6 @@ self.addEventListener('fetch', (event) => {
           cache.put(req, responseToCache);
         });
         return networkResponse;
-      }).catch(() => {
-        // Offline fallback for navigation requests (HTML)
-        if (req.mode === 'navigate') {
-          return caches.match('./index.html') || caches.match('./');
-        }
       });
     })
   );
