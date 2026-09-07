@@ -540,6 +540,27 @@ document.addEventListener('DOMContentLoaded', () => {
         state.products = [];
       }
 
+      // Active Purge: permanently remove any lingering legacy demo records
+      state.clinics = (state.clinics || []).filter(c => 
+        c && c.id !== 'c1' && c.id !== 'c2' && c.id !== 'c3' &&
+        c.name !== 'Apollo Speciality Hospitals' &&
+        c.name !== 'Fortis Malar Hospital' &&
+        c.name !== 'MIOT International'
+      );
+
+      state.recentBills = (state.recentBills || []).filter(b =>
+        b && b.id !== 'b1' && b.id !== 'b2' && b.id !== 'b3' &&
+        b.invoiceNo !== 'INV-2026-00001' &&
+        b.invoiceNo !== 'INV-2026-00002' &&
+        b.invoiceNo !== 'INV-2026-00003'
+      );
+
+      state.products = (state.products || []).filter(p =>
+        p && p.id !== 'p1' && p.id !== 'p2' && p.id !== 'p3' && p.id !== 'p4'
+      );
+
+      saveLocalData();
+
       const savedSettings = localStorage.getItem('coverplus_settings');
       if (savedSettings) state.settings = { ...state.settings, ...JSON.parse(savedSettings) };
       if (state.settings.companyName === 'CoverPlus' || state.settings.companyName === 'CoverPlus Medical Supplies') {
