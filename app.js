@@ -34,6 +34,9 @@
       appContainer.style.display = 'flex';
     }
     updateSidebarUser(user);
+    if (typeof window.syncWithCloud === 'function') {
+      window.syncWithCloud();
+    }
   }
 
   function showAuthScreen() {
@@ -505,100 +508,36 @@ document.addEventListener('DOMContentLoaded', () => {
   const loadLocalData = () => {
     try {
       const savedClinics = localStorage.getItem('coverplus_clinics');
-      if (savedClinics && JSON.parse(savedClinics).length > 0) {
-        state.clinics = JSON.parse(savedClinics);
+      if (savedClinics !== null) {
+        try {
+          state.clinics = JSON.parse(savedClinics) || [];
+        } catch (e) {
+          state.clinics = [];
+        }
       } else {
-        state.clinics = [
-          {
-            id: 'c1',
-            name: 'Apollo Speciality Hospitals',
-            contactPerson: 'Dr. R. Ramanathan',
-            phone: '+91 94440 12345',
-            address: '21, Greams Lane, Thousand Lights, Chennai - 600006',
-            totalOrders: 2,
-            totalBilled: 9700
-          },
-          {
-            id: 'c2',
-            name: 'Fortis Malar Hospital',
-            contactPerson: 'Mrs. Priya Sharma',
-            phone: '+91 98400 67890',
-            address: '52, 1st Main Rd, Gandhi Nagar, Adyar, Chennai - 600020',
-            totalOrders: 1,
-            totalBilled: 4200
-          },
-          {
-            id: 'c3',
-            name: 'MIOT International',
-            contactPerson: 'Mr. K. Vijayakumar',
-            phone: '+91 98840 54321',
-            address: '4/112, Mount Poonamallee Rd, Manapakkam, Chennai - 600089',
-            totalOrders: 1,
-            totalBilled: 4800
-          }
-        ];
+        state.clinics = [];
       }
 
       const savedBills = localStorage.getItem('coverplus_bills');
-      if (savedBills && JSON.parse(savedBills).length > 0) {
-        state.recentBills = JSON.parse(savedBills);
+      if (savedBills !== null) {
+        try {
+          state.recentBills = JSON.parse(savedBills) || [];
+        } catch (e) {
+          state.recentBills = [];
+        }
       } else {
-        state.recentBills = [
-          {
-            id: 'b1',
-            invoiceNo: 'INV-2026-00001',
-            clinicName: 'Apollo Speciality Hospitals',
-            clinicId: 'c1',
-            date: getTodayFormatted(),
-            amount: 5500,
-            status: 'Paid',
-            itemsSummary: 'Bed Cover (Deluxe) (50), Pillow Cover (SMS) (50)',
-            itemsSnapshot: [
-              { id: 1, name: 'Bed Cover (Deluxe)', size: 'Large (40x80)', qty: 50, rate: 75 },
-              { id: 2, name: 'Pillow Cover (SMS)', size: 'Standard (18x27)', qty: 50, rate: 35 }
-            ]
-          },
-          {
-            id: 'b2',
-            invoiceNo: 'INV-2026-00002',
-            clinicName: 'Fortis Malar Hospital',
-            clinicId: 'c2',
-            date: getTodayFormatted(),
-            amount: 4200,
-            status: 'Paid',
-            itemsSummary: 'OT Table Sheet (30), Surgeon Drape (40)',
-            itemsSnapshot: [
-              { id: 3, name: 'OT Table Sheet (Waterproof)', size: 'Extra Large', qty: 30, rate: 90 },
-              { id: 4, name: 'Surgeon Drape Sheet', size: 'Medium', qty: 40, rate: 37.5 }
-            ]
-          },
-          {
-            id: 'b3',
-            invoiceNo: 'INV-2026-00003',
-            clinicName: 'MIOT International',
-            clinicId: 'c3',
-            date: getTodayFormatted(),
-            amount: 4800,
-            status: 'Unpaid',
-            itemsSummary: 'Patient Transfer Sheet (40), Bed Cover (Deluxe) (20)',
-            itemsSnapshot: [
-              { id: 5, name: 'Patient Transfer Sheet', size: 'Large', qty: 40, rate: 85 },
-              { id: 6, name: 'Bed Cover (Deluxe)', size: 'Large (40x80)', qty: 20, rate: 70 }
-            ]
-          }
-        ];
+        state.recentBills = [];
       }
 
       const savedProducts = localStorage.getItem('coverplus_products');
-      if (savedProducts && JSON.parse(savedProducts).length > 0) {
-        state.products = JSON.parse(savedProducts);
+      if (savedProducts !== null) {
+        try {
+          state.products = JSON.parse(savedProducts) || [];
+        } catch (e) {
+          state.products = [];
+        }
       } else {
-        state.products = [
-          { id: 'p1', name: 'Bed Cover (Deluxe)', sizes: 'Small, Medium, Large (40x80)', spec: 'Non-woven SMS 45 GSM / Fluid Resistant', rate: 75 },
-          { id: 'p2', name: 'Pillow Cover (Hygienic)', sizes: 'Standard (18x27)', spec: 'Waterproof PE Laminate', rate: 35 },
-          { id: 'p3', name: 'OT Table Sheet', sizes: 'Universal (50x90)', spec: 'Heavy Duty Anti-slip / Sterile SMS', rate: 90 },
-          { id: 'p4', name: 'Patient Transfer Sheet', sizes: 'Full Length', spec: 'High Tensile Polypropylene (100 GSM)', rate: 85 }
-        ];
+        state.products = [];
       }
 
       const savedSettings = localStorage.getItem('coverplus_settings');
@@ -2106,8 +2045,38 @@ document.addEventListener('DOMContentLoaded', () => {
     showToast(`Added "${prod.name}" (₹${prod.rate})`, 'normal');
   };
 
+  const cloudSaveClinic = async (clinic) => {
+    try {
+      if (!clinic || !clinic.name) return false;
+      const clinicId = (clinic.id && clinic.id.length === 36) ? clinic.id : generateUUID();
+      clinic.id = clinicId;
+
+      const payload = {
+        id: clinicId,
+        name: clinic.name,
+        contact_person: clinic.contactPerson || '',
+        phone: clinic.phone || '',
+        address: clinic.address || '',
+        total_billed: parseFloat(clinic.totalBilled) || 0
+      };
+
+      try {
+        await cloudDb.insert('clinics', [payload]);
+      } catch (insErr) {
+        await cloudDb.update('clinics', payload, `id=eq.${clinicId}`);
+      }
+      return true;
+    } catch (err) {
+      console.error('Cloud save clinic error:', err);
+      return false;
+    }
+  };
+
   const cloudSaveBill = async (bill, clinic) => {
     try {
+      if (clinic) {
+        await cloudSaveClinic(clinic);
+      }
       let clinicUuid = (clinic && clinic.id && clinic.id.length === 36) ? clinic.id : null;
       const payload = {
         invoice_no: bill.invoiceNo,
@@ -2119,11 +2088,19 @@ document.addEventListener('DOMContentLoaded', () => {
         total_amount: bill.amount,
         status: bill.status || 'Paid'
       };
-      await cloudDb.insert('bills', [payload]);
-      if (clinic) {
-        await cloudDb.update('clinics', {
-          total_billed: clinic.totalBilled || 0
-        }, `id=eq.${clinic.id}`);
+      try {
+        await cloudDb.insert('bills', [payload]);
+      } catch (insertErr) {
+        console.warn('Initial bill insert failed, retrying without FK clinic_id:', insertErr);
+        payload.clinic_id = null;
+        await cloudDb.insert('bills', [payload]);
+      }
+      if (clinic && clinic.id && clinic.id.length === 36) {
+        try {
+          await cloudDb.update('clinics', {
+            total_billed: clinic.totalBilled || 0
+          }, `id=eq.${clinic.id}`);
+        } catch (uErr) {}
       }
       return true;
     } catch (err) {
@@ -2170,7 +2147,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const cloudDeleteClinic = async (clinicId) => {
     try {
-      await cloudDb.delete('clinics', `id=eq.${clinicId}`);
+      if (clinicId && clinicId.length === 36) {
+        await cloudDb.delete('clinics', `id=eq.${clinicId}`);
+      }
       return true;
     } catch (err) {
       console.error('Cloud delete clinic error:', err);
@@ -2223,48 +2202,83 @@ document.addEventListener('DOMContentLoaded', () => {
       ]);
 
       let hasCloudData = false;
-      if (Array.isArray(dbClinics) && dbClinics.length > 0) {
-        state.clinics = dbClinics.map(c => ({
-          id: c.id,
-          name: c.name,
-          contactPerson: c.contact_person,
-          phone: c.phone,
-          address: c.address,
-          totalBilled: parseFloat(c.total_billed) || 0,
-          totalOrders: 0
-        }));
-        hasCloudData = true;
+      if (Array.isArray(dbClinics)) {
+        if (dbClinics.length > 0) {
+          state.clinics = dbClinics.map(c => ({
+            id: c.id,
+            name: c.name,
+            contactPerson: c.contact_person,
+            phone: c.phone,
+            address: c.address,
+            totalBilled: parseFloat(c.total_billed) || 0,
+            totalOrders: 0
+          }));
+          hasCloudData = true;
+        } else {
+          // If Supabase has 0 clinics, check if this device has real clinics (like Nehru Clinic, Sujee Clinic, Ark Hospital)
+          // and auto-upload them to Supabase so they are immediately available to other devices!
+          const realLocalClinics = (state.clinics || []).filter(c => c.id !== 'c1' && c.id !== 'c2' && c.id !== 'c3');
+          if (realLocalClinics.length > 0) {
+            for (const c of realLocalClinics) {
+              await cloudSaveClinic(c);
+            }
+          } else {
+            state.clinics = [];
+          }
+        }
       }
 
       if (Array.isArray(dbBills)) {
-        state.recentBills = dbBills.map(b => ({
-          id: b.id,
-          invoiceNo: b.invoice_no,
-          clinicName: b.clinic_name,
-          clinicId: b.clinic_id,
-          date: b.date,
-          amount: parseFloat(b.total_amount) || 0,
-          status: b.status || 'Paid',
-          itemsSnapshot: b.items || [],
-          itemsSummary: Array.isArray(b.items) ? b.items.map(i => `${i.name} (${i.qty})`).join(', ') : ''
-        }));
+        if (dbBills.length > 0) {
+          state.recentBills = dbBills.map(b => ({
+            id: b.id,
+            invoiceNo: b.invoice_no,
+            clinicName: b.clinic_name,
+            clinicId: b.clinic_id,
+            date: b.date,
+            amount: parseFloat(b.total_amount) || 0,
+            status: b.status || 'Paid',
+            itemsSnapshot: b.items || [],
+            itemsSummary: Array.isArray(b.items) ? b.items.map(i => `${i.name} (${i.qty})`).join(', ') : ''
+          }));
+          hasCloudData = true;
+        } else {
+          // If Supabase has 0 bills, auto-upload real bills from this device
+          const realLocalBills = (state.recentBills || []).filter(b => b.id !== 'b1' && b.id !== 'b2' && b.id !== 'b3');
+          if (realLocalBills.length > 0) {
+            for (const b of realLocalBills) {
+              const c = state.clinics.find(cl => cl.id === b.clinicId || cl.name === b.clinicName);
+              await cloudSaveBill(b, c);
+            }
+          } else {
+            state.recentBills = [];
+          }
+        }
         state.clinics.forEach(c => {
           const cBills = state.recentBills.filter(b => b.clinicId === c.id || b.clinicName === c.name);
           c.totalOrders = cBills.length;
           c.totalBilled = cBills.reduce((sum, b) => sum + (b.amount || 0), 0);
         });
-        hasCloudData = true;
       }
 
-      if (Array.isArray(dbProducts) && dbProducts.length > 0) {
-        state.products = dbProducts.map(p => ({
-          id: p.id,
-          name: p.name,
-          sizes: p.sizes,
-          spec: p.spec,
-          rate: parseFloat(p.rate) || 0
-        }));
-        hasCloudData = true;
+      if (Array.isArray(dbProducts)) {
+        if (dbProducts.length > 0) {
+          state.products = dbProducts.map(p => ({
+            id: p.id,
+            name: p.name,
+            sizes: p.sizes,
+            spec: p.spec,
+            rate: parseFloat(p.rate) || 0
+          }));
+          hasCloudData = true;
+        } else {
+          const realLocalProds = (state.products || []).filter(p => p.id !== 'p1' && p.id !== 'p2' && p.id !== 'p3' && p.id !== 'p4');
+          if (realLocalProds.length > 0) {
+            for (const p of realLocalProds) {
+              await cloudSaveProduct(p);
+            }
+          }
+        }
       }
 
       if (Array.isArray(dbSettings) && dbSettings.length > 0 && dbSettings[0]) {
@@ -2286,6 +2300,10 @@ document.addEventListener('DOMContentLoaded', () => {
         hasCloudData = true;
       }
 
+      if (!state.selectedClinicId || !state.clinics.some(c => c.id === state.selectedClinicId)) {
+        state.selectedClinicId = state.clinics.length > 0 ? state.clinics[0].id : '';
+      }
+
       saveLocalData();
       updateDbStatus(true, 'Supabase Cloud Live');
       renderClinicSelect();
@@ -2303,6 +2321,8 @@ document.addEventListener('DOMContentLoaded', () => {
       updateDbStatus(false, 'Local Storage');
     }
   };
+
+  window.syncWithCloud = cloudFetchAllData;
 
   const openClinicDetails = (clinic) => {
     const detailsModalTitle = document.getElementById('detailsModalTitle');
@@ -2614,4 +2634,14 @@ document.addEventListener('DOMContentLoaded', () => {
   updateStatsUI();
   recalculateNextInvoiceNumber();
   cloudFetchAllData();
+
+  // Instant multi-device sync when window or tab gets focus
+  window.addEventListener('focus', () => {
+    cloudFetchAllData();
+  });
+
+  // Periodic background sync every 20 seconds
+  setInterval(() => {
+    cloudFetchAllData();
+  }, 20000);
 });
