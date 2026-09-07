@@ -38,9 +38,11 @@ CREATE TABLE IF NOT EXISTS products (
   name TEXT NOT NULL,
   sizes TEXT NOT NULL,
   spec TEXT,
-  rate NUMERIC(10, 2) NOT NULL DEFAULT 0.00,
+  rate NUMERIC(12, 4) NOT NULL DEFAULT 0.00,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
+-- If table already exists, run:
+-- ALTER TABLE products ALTER COLUMN rate TYPE NUMERIC(12, 4);
 
 -- 5. COMPANY PROFILE & SETTINGS TABLE
 CREATE TABLE IF NOT EXISTS company_settings (

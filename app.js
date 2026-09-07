@@ -705,10 +705,32 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Helper: Currency Formatter
   const formatCurrency = (val) => {
-    return '₹ ' + Number(val || 0).toLocaleString('en-IN', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
+    const num = Number(val || 0);
+    const decimalPart = num.toString().split('.')[1] || '';
+    const fractionDigits = Math.max(2, Math.min(decimalPart.length, 6));
+    return '₹ ' + num.toLocaleString('en-IN', {
+      minimumFractionDigits: fractionDigits,
+      maximumFractionDigits: fractionDigits
     });
+  };
+
+  // Helper: Rate Formatter (exact decimals when > 2, otherwise 2 decimals)
+  const formatRate = (val) => {
+    const num = Number(val || 0);
+    if (isNaN(num)) return '0.00';
+    const str = num.toString();
+    const decimalPart = str.split('.')[1] || '';
+    if (decimalPart.length > 2) {
+      return str;
+    }
+    return num.toFixed(2);
+  };
+
+  // Helper: Compact Rate Formatter for chips & options
+  const formatCompactRate = (val) => {
+    const num = Number(val || 0);
+    if (isNaN(num)) return '0';
+    return num.toString();
   };
 
   // Helper: Toast
@@ -989,8 +1011,8 @@ document.addEventListener('DOMContentLoaded', () => {
             <td><input type="text" list="productsDatalist" class="item-name-input" data-id="${item.id}" value="${item.name}" placeholder="Type or pick product..." style="width: 100%;" autocomplete="off"></td>
             <td><input type="text" class="item-size-input" data-id="${item.id}" value="${item.size || ''}" placeholder="e.g. Med / 30x40" style="width: 100%;"></td>
             <td style="text-align: center;"><input type="number" class="input-qty" data-id="${item.id}" value="${item.qty}" style="width: 100%; text-align: center;" min="1"></td>
-            <td style="text-align: right;"><input type="number" class="input-rate" data-id="${item.id}" value="${item.rate ? Number(item.rate).toFixed(2) : ''}" placeholder="0.00" style="width: 100%; text-align: right;" step="0.50"></td>
-            <td class="item-amount-cell" style="text-align: right; font-weight: 700; color: #1E293B;">${Number(rowAmount).toFixed(2)}</td>
+            <td style="text-align: right;"><input type="number" class="input-rate" data-id="${item.id}" value="${item.rate ? item.rate : ''}" placeholder="0.00" style="width: 100%; text-align: right;" step="any" min="0"></td>
+            <td class="item-amount-cell" style="text-align: right; font-weight: 700; color: #1E293B;">${formatRate(rowAmount)}</td>
             <td style="text-align: center;">
               <button class="btn-delete-row" data-id="${item.id}" title="Remove item">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
@@ -1007,8 +1029,8 @@ document.addEventListener('DOMContentLoaded', () => {
             <td><strong>${item.name || '<span style="color:#CBD5E1; font-weight:normal;">[Item name]</span>'}</strong></td>
             <td style="color: #64748B;">${item.size || '—'}</td>
             <td style="text-align: center; font-weight: 700;">${item.qty}</td>
-            <td style="text-align: right;">${rate > 0 ? Number(item.rate).toFixed(2) : '0.00'}</td>
-            <td style="text-align: right; font-weight: 700; color: #0F172A;">${Number(rowAmount).toFixed(2)}</td>
+            <td style="text-align: right;">${rate > 0 ? formatRate(item.rate) : '0.00'}</td>
+            <td style="text-align: right; font-weight: 700; color: #0F172A;">${formatRate(rowAmount)}</td>
           `;
           previewItemsBody.appendChild(previewTr);
         }
@@ -1061,8 +1083,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const qtyInp = row.querySelector('.input-qty');
 
             if (sizeInp) sizeInp.value = item.size;
-            if (rateInp) rateInp.value = item.rate > 0 ? Number(item.rate).toFixed(2) : '';
-            if (amountCell) amountCell.textContent = Number((item.qty || 0) * item.rate).toFixed(2);
+            if (rateInp) rateInp.value = item.rate > 0 ? item.rate : '';
+            if (amountCell) amountCell.textContent = formatRate((item.qty || 0) * item.rate);
             if (qtyInp) {
               setTimeout(() => {
                 qtyInp.focus();
@@ -1102,7 +1124,7 @@ document.addEventListener('DOMContentLoaded', () => {
           const row = e.target.closest('tr');
           if (row) {
             const amountCell = row.querySelector('.item-amount-cell');
-            if (amountCell) amountCell.textContent = Number(item.qty * (item.rate || 0)).toFixed(2);
+            if (amountCell) amountCell.textContent = formatRate(item.qty * (item.rate || 0));
           }
           updateTotalsWithoutRerender();
           updatePreviewItemsOnly();
@@ -1119,7 +1141,7 @@ document.addEventListener('DOMContentLoaded', () => {
           const row = e.target.closest('tr');
           if (row) {
             const amountCell = row.querySelector('.item-amount-cell');
-            if (amountCell) amountCell.textContent = Number((item.qty || 0) * item.rate).toFixed(2);
+            if (amountCell) amountCell.textContent = formatRate((item.qty || 0) * item.rate);
           }
           updateTotalsWithoutRerender();
           updatePreviewItemsOnly();
@@ -1149,8 +1171,8 @@ document.addEventListener('DOMContentLoaded', () => {
         <td><strong>${item.name || '<span style="color:#CBD5E1; font-weight:normal;">[Item name]</span>'}</strong></td>
         <td style="color: #64748B;">${item.size}</td>
         <td style="text-align: center; font-weight: 700;">${item.qty}</td>
-        <td style="text-align: right;">${rate > 0 ? Number(item.rate).toFixed(2) : '0.00'}</td>
-        <td style="text-align: right; font-weight: 700; color: #0F172A;">${Number(rowAmount).toFixed(2)}</td>
+        <td style="text-align: right;">${rate > 0 ? formatRate(item.rate) : '0.00'}</td>
+        <td style="text-align: right; font-weight: 700; color: #0F172A;">${formatRate(rowAmount)}</td>
       `;
       previewItemsBody.appendChild(previewTr);
     });
@@ -1582,8 +1604,8 @@ document.addEventListener('DOMContentLoaded', () => {
           <td><strong>${item.name}</strong></td>
           <td style="color: #64748B;">${item.size || '—'}</td>
           <td style="text-align: center; font-weight: 700;">${item.qty}</td>
-          <td style="text-align: right;">${Number(rate).toFixed(2)}</td>
-          <td style="text-align: right; font-weight: 700; color: #0F172A;">${Number(rowAmount).toFixed(2)}</td>
+          <td style="text-align: right;">${formatRate(rate)}</td>
+          <td style="text-align: right; font-weight: 700; color: #0F172A;">${formatRate(rowAmount)}</td>
         `;
         previewItemsBody.appendChild(tr);
       });
@@ -1628,8 +1650,8 @@ document.addEventListener('DOMContentLoaded', () => {
           <td style="padding:7px 10px;font-weight:600;">${item.name}</td>
           <td style="padding:7px 10px;color:#64748B;">${item.size || '—'}</td>
           <td style="text-align:center;font-weight:700;padding:7px 10px;">${qty}</td>
-          <td style="text-align:right;padding:7px 10px;">${rate.toFixed(2)}</td>
-          <td style="text-align:right;font-weight:700;color:#0F172A;padding:7px 10px;">${amt.toFixed(2)}</td>
+          <td style="text-align:right;padding:7px 10px;">${formatRate(rate)}</td>
+          <td style="text-align:right;font-weight:700;color:#0F172A;padding:7px 10px;">${formatRate(amt)}</td>
         </tr>`;
       }).join('');
 
@@ -2021,7 +2043,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (datalist) {
       datalist.innerHTML = state.products.map(p => {
         const sizeInfo = p.sizes ? ` (${p.sizes})` : '';
-        return `<option value="${p.name}">₹${Number(p.rate || 0).toFixed(0)}${sizeInfo}</option>`;
+        return `<option value="${p.name}">₹${formatCompactRate(p.rate)}${sizeInfo}</option>`;
       }).join('');
     }
 
@@ -2038,7 +2060,7 @@ document.addEventListener('DOMContentLoaded', () => {
           <button type="button" class="product-chip-btn" onclick="window.addCatalogProductToBill('${p.id}')" title="Click to add ${p.name} to bill">
             <span class="chip-icon">+</span>
             <span>${p.name}</span>
-            <span class="chip-rate">₹${Number(p.rate || 0).toFixed(0)}</span>
+            <span class="chip-rate">₹${formatCompactRate(p.rate)}</span>
           </button>
         `).join('');
       }
@@ -2421,8 +2443,8 @@ document.addEventListener('DOMContentLoaded', () => {
       const spec = document.getElementById('newProductSpec').value.trim();
       const rate = parseFloat(document.getElementById('newProductRate').value);
 
-      if (!name || isNaN(rate)) {
-        showToast('Please enter valid product details', 'error');
+      if (!name || isNaN(rate) || rate < 0) {
+        showToast('Please enter valid product details with a valid rate', 'error');
         return;
       }
 
@@ -2443,7 +2465,7 @@ document.addEventListener('DOMContentLoaded', () => {
       addProductForm.reset();
       const modal = document.getElementById('addProductModal');
       if (modal) modal.classList.remove('active');
-      showToast(`Product "${name}" added!`, 'success');
+      showToast(`Product "${name}" added (₹${formatCompactRate(rate)})!`, 'success');
     });
   }
 
