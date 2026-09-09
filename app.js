@@ -2256,13 +2256,70 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
+  const cloudSaveEmployee = async (employee) => {
+    try {
+      const payload = {
+        id: employee.id,
+        name: employee.name,
+        role: employee.role || '',
+        phone: employee.phone || '',
+        created_at: new Date().toISOString()
+      };
+      await cloudDb.insert('employees', [payload]);
+      return true;
+    } catch (err) {
+      console.warn('Cloud save employee notice (local saved):', err);
+      return false;
+    }
+  };
+
+  const cloudDeleteEmployee = async (employeeId) => {
+    try {
+      if (employeeId && employeeId.length === 36) {
+        await cloudDb.delete('employees', `id=eq.${employeeId}`);
+        await cloudDb.delete('attendance', `employee_id=eq.${employeeId}`);
+      }
+      return true;
+    } catch (err) {
+      console.warn('Cloud delete employee notice:', err);
+      return false;
+    }
+  };
+
+  const cloudSaveAttendanceDay = async (dateStr, records) => {
+    try {
+      if (!Array.isArray(records) || records.length === 0) return true;
+      try {
+        await cloudDb.delete('attendance', `date=eq.${dateStr}`);
+      } catch (delErr) {}
+
+      const payloads = records.map(r => ({
+        id: generateUUID(),
+        employee_id: r.employeeId,
+        employee_name: r.employeeName || '',
+        date: dateStr,
+        status: r.status || 'Present',
+        notes: r.notes || '',
+        created_at: new Date().toISOString()
+      }));
+
+      await cloudDb.insert('attendance', payloads);
+      return true;
+    } catch (err) {
+      console.warn('Cloud save attendance notice (local saved):', err);
+      return false;
+    }
+  };
+
   const cloudFetchAllData = async () => {
     try {
-      const [dbClinics, dbBills, dbProducts, dbSettings] = await Promise.all([
+      const [dbClinics, dbBills, dbProducts, dbSettings, dbEmployees, dbAttendance] = await Promise.all([
         cloudDb.get('clinics'),
         cloudDb.get('bills', 'select=*&order=created_at.desc'),
         cloudDb.get('products'),
-        cloudDb.get('company_settings', 'id=eq.1')
+        cloudDb.get('company_settings', 'id=eq.1'),
+        cloudDb.get('employees').catch(() => null),
+        cloudDb.get('attendance').catch(() => null)
       ]);
 
       let hasCloudData = false;
@@ -2364,6 +2421,47 @@ document.addEventListener('DOMContentLoaded', () => {
         hasCloudData = true;
       }
 
+      // Sync employees from Supabase Cloud
+      if (Array.isArray(dbEmployees)) {
+        if (dbEmployees.length > 0) {
+          state.employees = dbEmployees.map(e => ({
+            id: e.id,
+            name: e.name,
+            role: e.role || '',
+            phone: e.phone || ''
+          }));
+          hasCloudData = true;
+        } else if (state.employees.length > 0) {
+          // If cloud has 0 employees, upload local real staff
+          for (const emp of state.employees) {
+            await cloudSaveEmployee(emp);
+          }
+        }
+      }
+
+      // Sync attendance records from Supabase Cloud
+      if (Array.isArray(dbAttendance)) {
+        if (dbAttendance.length > 0) {
+          const map = {};
+          dbAttendance.forEach(a => {
+            if (!map[a.date]) map[a.date] = [];
+            map[a.date].push({
+              employeeId: a.employee_id,
+              employeeName: a.employee_name,
+              date: a.date,
+              status: a.status || 'Present',
+              notes: a.notes || ''
+            });
+          });
+          state.attendanceRecords = map;
+          hasCloudData = true;
+        } else if (Object.keys(state.attendanceRecords).length > 0) {
+          for (const d of Object.keys(state.attendanceRecords)) {
+            await cloudSaveAttendanceDay(d, state.attendanceRecords[d]);
+          }
+        }
+      }
+
       if (!state.selectedClinicId || !state.clinics.some(c => c.id === state.selectedClinicId)) {
         state.selectedClinicId = state.clinics.length > 0 ? state.clinics[0].id : '';
       }
@@ -2380,6 +2478,7 @@ document.addEventListener('DOMContentLoaded', () => {
       renderSettingsUI();
       updateStatsUI();
       recalculateNextInvoiceNumber();
+      renderAttendancePageView();
     } catch (err) {
       console.warn('Cloud data fetch notice (using local storage):', err);
       updateDbStatus(false, 'Local Storage');
@@ -2939,7 +3038,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
-  window.deleteEmployee = (empId) => {
+  window.deleteEmployee = async (empId) => {
     const emp = state.employees.find(e => e.id === empId);
     const name = emp ? emp.name : 'this staff member';
     if (!confirm(`Are you sure you want to remove ${name} from the staff list?`)) return;
@@ -2953,6 +3052,7 @@ document.addEventListener('DOMContentLoaded', () => {
     saveLocalData();
     renderAttendancePageView();
     showToast(`Staff member removed`, 'normal');
+    await cloudDeleteEmployee(empId);
   };
 
   const exportAttendanceCSV = () => {
@@ -3072,9 +3172,25 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (saveBtn) {
-      saveBtn.addEventListener('click', () => {
+      saveBtn.addEventListener('click', async () => {
         saveLocalData();
-        showToast('Attendance recorded and saved successfully! 💾', 'success');
+        const currentRecords = state.attendanceRecords[state.selectedAttendanceDate] || [];
+        const origText = saveBtn.textContent;
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'Saving...';
+        try {
+          const cloudOk = await cloudSaveAttendanceDay(state.selectedAttendanceDate, currentRecords);
+          if (cloudOk) {
+            showToast('Attendance saved & synced to cloud! ☁️', 'success');
+          } else {
+            showToast('Attendance recorded and saved locally! 💾', 'normal');
+          }
+        } catch (e) {
+          showToast('Attendance recorded and saved locally! 💾', 'normal');
+        } finally {
+          saveBtn.disabled = false;
+          saveBtn.textContent = origText;
+        }
       });
     }
 
@@ -3106,7 +3222,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (cancelAddStaffBtn) cancelAddStaffBtn.addEventListener('click', closeEmployeeModal);
 
     if (addStaffForm) {
-      addStaffForm.addEventListener('submit', (e) => {
+      addStaffForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const nameInp = document.getElementById('newEmployeeName');
         const roleInp = document.getElementById('newEmployeeRole');
@@ -3132,7 +3248,13 @@ document.addEventListener('DOMContentLoaded', () => {
         saveLocalData();
         closeEmployeeModal();
         renderAttendancePageView();
-        showToast(`Added ${newEmp.name} to staff roster!`, 'success');
+        
+        const cloudOk = await cloudSaveEmployee(newEmp);
+        if (cloudOk) {
+          showToast(`Added ${newEmp.name} & synced to cloud! ☁️`, 'success');
+        } else {
+          showToast(`Added ${newEmp.name} to staff roster!`, 'success');
+        }
       });
     }
   };

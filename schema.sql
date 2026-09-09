@@ -96,6 +96,10 @@ CREATE POLICY "Allow anon all on clinics" ON clinics FOR ALL USING (true) WITH C
 CREATE POLICY "Allow anon all on bills" ON bills FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow anon all on products" ON products FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow anon all on company_settings" ON company_settings FOR ALL USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "Allow anon all on employees" ON employees;
 CREATE POLICY "Allow anon all on employees" ON employees FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow anon all on attendance" ON attendance;
 CREATE POLICY "Allow anon all on attendance" ON attendance FOR ALL USING (true) WITH CHECK (true);
+
 
