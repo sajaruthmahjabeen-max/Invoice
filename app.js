@@ -421,6 +421,22 @@ document.addEventListener('DOMContentLoaded', () => {
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       return true;
+    },
+    async upsert(table, records, onConflict = 'id') {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?on_conflict=${onConflict}`, {
+        method: 'POST',
+        headers: {
+          ...supabaseHeaders,
+          'Prefer': 'resolution=merge-duplicates,return=representation'
+        },
+        body: JSON.stringify(records)
+      });
+      if (!res.ok) {
+        const errTxt = await res.text();
+        throw new Error(`HTTP ${res.status}: ${errTxt}`);
+      }
+      const text = await res.text();
+      return text ? JSON.parse(text) : true;
     }
   };
 
@@ -2265,7 +2281,7 @@ document.addEventListener('DOMContentLoaded', () => {
         phone: employee.phone || '',
         created_at: new Date().toISOString()
       };
-      await cloudDb.insert('employees', [payload]);
+      await cloudDb.upsert('employees', [payload], 'id');
       return true;
     } catch (err) {
       console.warn('Cloud save employee notice (local saved):', err);
@@ -2289,6 +2305,24 @@ document.addEventListener('DOMContentLoaded', () => {
   const cloudSaveAttendanceDay = async (dateStr, records) => {
     try {
       if (!Array.isArray(records) || records.length === 0) return true;
+
+      // FIRST: Ensure all active employees exist in Supabase employees table
+      // to guarantee foreign key integrity across devices!
+      if (Array.isArray(state.employees) && state.employees.length > 0) {
+        const empPayloads = state.employees.map(e => ({
+          id: e.id,
+          name: e.name,
+          role: e.role || '',
+          phone: e.phone || '',
+          created_at: new Date().toISOString()
+        }));
+        try {
+          await cloudDb.upsert('employees', empPayloads, 'id');
+        } catch (empErr) {
+          console.warn('Pre-sync employees notice:', empErr);
+        }
+      }
+
       try {
         await cloudDb.delete('attendance', `date=eq.${dateStr}`);
       } catch (delErr) {}
@@ -2303,7 +2337,7 @@ document.addEventListener('DOMContentLoaded', () => {
         created_at: new Date().toISOString()
       }));
 
-      await cloudDb.insert('attendance', payloads);
+      await cloudDb.upsert('attendance', payloads, 'id');
       return true;
     } catch (err) {
       console.warn('Cloud save attendance notice (local saved):', err);
@@ -2336,8 +2370,6 @@ document.addEventListener('DOMContentLoaded', () => {
           }));
           hasCloudData = true;
         } else {
-          // If Supabase has 0 clinics, check if this device has real clinics (like Nehru Clinic, Sujee Clinic, Ark Hospital)
-          // and auto-upload them to Supabase so they are immediately available to other devices!
           const realLocalClinics = (state.clinics || []).filter(c => c.id !== 'c1' && c.id !== 'c2' && c.id !== 'c3');
           if (realLocalClinics.length > 0) {
             for (const c of realLocalClinics) {
@@ -2364,7 +2396,6 @@ document.addEventListener('DOMContentLoaded', () => {
           }));
           hasCloudData = true;
         } else {
-          // If Supabase has 0 bills, auto-upload real bills from this device
           const realLocalBills = (state.recentBills || []).filter(b => b.id !== 'b1' && b.id !== 'b2' && b.id !== 'b3');
           if (realLocalBills.length > 0) {
             for (const b of realLocalBills) {
@@ -2432,9 +2463,18 @@ document.addEventListener('DOMContentLoaded', () => {
           }));
           hasCloudData = true;
         } else if (state.employees.length > 0) {
-          // If cloud has 0 employees, upload local real staff
-          for (const emp of state.employees) {
-            await cloudSaveEmployee(emp);
+          // If cloud has 0 employees and this device has local real employees, push them!
+          const empPayloads = state.employees.map(e => ({
+            id: e.id,
+            name: e.name,
+            role: e.role || '',
+            phone: e.phone || '',
+            created_at: new Date().toISOString()
+          }));
+          try {
+            await cloudDb.upsert('employees', empPayloads, 'id');
+          } catch (eErr) {
+            console.warn('Auto upload local employees notice:', eErr);
           }
         }
       }
