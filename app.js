@@ -479,7 +479,10 @@ document.addEventListener('DOMContentLoaded', () => {
       totalBills: 0,
       totalSales: 0,
       pendingAmount: 0
-    }
+    },
+    employees: [],
+    attendanceRecords: {},
+    selectedAttendanceDate: new Date().toISOString().split('T')[0]
   };
 
   const recalculateNextInvoiceNumber = () => {
@@ -539,6 +542,42 @@ document.addEventListener('DOMContentLoaded', () => {
       } else {
         state.products = [];
       }
+
+      const savedEmployees = localStorage.getItem('coverplus_employees');
+      if (savedEmployees !== null) {
+        try {
+          state.employees = JSON.parse(savedEmployees) || [];
+        } catch (e) {
+          state.employees = [];
+        }
+      } else {
+        state.employees = [];
+      }
+
+      // Remove any previously seeded default staff members
+      state.employees = (state.employees || []).filter(e =>
+        e && !['emp-1', 'emp-2', 'emp-3', 'emp-4', 'emp-5', 'emp-6'].includes(e.id)
+      );
+
+      const savedAttendance = localStorage.getItem('coverplus_attendance');
+      if (savedAttendance !== null) {
+        try {
+          state.attendanceRecords = JSON.parse(savedAttendance) || {};
+        } catch (e) {
+          state.attendanceRecords = {};
+        }
+      } else {
+        state.attendanceRecords = {};
+      }
+
+      // Purge attendance logs of dummy staff
+      Object.keys(state.attendanceRecords).forEach(k => {
+        if (Array.isArray(state.attendanceRecords[k])) {
+          state.attendanceRecords[k] = state.attendanceRecords[k].filter(r =>
+            r && !['emp-1', 'emp-2', 'emp-3', 'emp-4', 'emp-5', 'emp-6'].includes(r.employeeId)
+          );
+        }
+      });
 
       // Active Purge: permanently remove any lingering legacy demo records
       state.clinics = (state.clinics || []).filter(c => 
@@ -600,6 +639,8 @@ document.addEventListener('DOMContentLoaded', () => {
       localStorage.setItem('coverplus_bills', JSON.stringify(state.recentBills));
       localStorage.setItem('coverplus_products', JSON.stringify(state.products));
       localStorage.setItem('coverplus_settings', JSON.stringify(state.settings));
+      localStorage.setItem('coverplus_employees', JSON.stringify(state.employees));
+      localStorage.setItem('coverplus_attendance', JSON.stringify(state.attendanceRecords));
       if (state.selectedClinicId) {
         localStorage.setItem('coverplus_selected_clinic', state.selectedClinicId);
       }
@@ -775,6 +816,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (viewId === 'view-clinics') {
       renderClinicsPageView();
+    } else if (viewId === 'view-attendance') {
+      renderAttendancePageView();
     } else if (viewId === 'view-all-bills') {
       renderAllBillsPageView();
     } else if (viewId === 'view-products') {
@@ -2643,7 +2686,459 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  /* ================================================================
+     ATTENDANCE MODULE LOGIC
+  ================================================================ */
+  const formatIsoDateToDisplay = (isoStr) => {
+    if (!isoStr) return '';
+    try {
+      const parts = isoStr.split('-');
+      if (parts.length === 3) {
+        return `${parts[2]}/${parts[1]}/${parts[0]}`;
+      }
+    } catch (e) {}
+    return isoStr;
+  };
+
+  const getStaffInitials = (name) => {
+    if (!name) return 'ST';
+    const words = name.trim().split(/\s+/);
+    if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+    return (words[0][0] + words[1][0]).toUpperCase();
+  };
+
+  const ensureDailyAttendanceList = (dateStr) => {
+    if (!state.attendanceRecords[dateStr]) {
+      state.attendanceRecords[dateStr] = [];
+    }
+
+    const currentRecords = state.attendanceRecords[dateStr];
+    state.employees.forEach(emp => {
+      let found = currentRecords.find(r => r.employeeId === emp.id);
+      if (!found) {
+        currentRecords.push({
+          employeeId: emp.id,
+          employeeName: emp.name,
+          date: dateStr,
+          status: 'Present',
+          notes: ''
+        });
+      } else {
+        found.employeeName = emp.name;
+      }
+    });
+
+    // Remove any stale records if employee was deleted
+    state.attendanceRecords[dateStr] = currentRecords.filter(r =>
+      state.employees.some(emp => emp.id === r.employeeId)
+    );
+
+    return state.attendanceRecords[dateStr];
+  };
+
+  const renderAttendancePageView = (searchQuery = '') => {
+    const tableBody = document.getElementById('attendanceTableBody');
+    const dateInput = document.getElementById('attendanceDateInput');
+    const dateLabel = document.getElementById('attCurrentDateLabel');
+    const monthPicker = document.getElementById('attendanceMonthPicker');
+
+    if (!tableBody) return;
+
+    const activeDate = state.selectedAttendanceDate || new Date().toISOString().split('T')[0];
+    if (dateInput && dateInput.value !== activeDate) {
+      dateInput.value = activeDate;
+    }
+    if (monthPicker && !monthPicker.value) {
+      monthPicker.value = activeDate.slice(0, 7);
+    }
+
+    if (dateLabel) {
+      try {
+        const dObj = new Date(activeDate + 'T00:00:00');
+        dateLabel.textContent = `Date: ${dObj.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}`;
+      } catch (e) {
+        dateLabel.textContent = `Date: ${activeDate}`;
+      }
+    }
+
+    const dailyRecords = ensureDailyAttendanceList(activeDate);
+
+    // Filter by search query if any
+    const query = (searchQuery || '').trim().toLowerCase();
+    let displayList = state.employees.filter(emp => {
+      if (!query) return true;
+      return (emp.name && emp.name.toLowerCase().includes(query)) ||
+             (emp.role && emp.role.toLowerCase().includes(query));
+    });
+
+    tableBody.innerHTML = '';
+
+    if (displayList.length === 0) {
+      tableBody.innerHTML = `
+        <tr>
+          <td colspan="6" style="text-align:center; padding: 32px 16px; color: #64748B;">
+            <div style="font-size: 28px; margin-bottom: 8px;">👥</div>
+            <div style="font-weight: 700; font-size: 14px; color: #1E293B;">No Staff Members Found</div>
+            <p style="font-size: 12px; margin-top: 4px;">Click <strong>"+ Add Staff"</strong> above to register your workers &amp; team members.</p>
+          </td>
+        </tr>
+      `;
+    } else {
+      displayList.forEach((emp, index) => {
+        const record = dailyRecords.find(r => r.employeeId === emp.id) || {
+          status: 'Present',
+          notes: ''
+        };
+        const initials = getStaffInitials(emp.name);
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td style="text-align: center; font-weight: 700; color: #64748B;">${index + 1}</td>
+          <td>
+            <div class="staff-name-cell">
+              <div class="staff-avatar-initial">${initials}</div>
+              <div>
+                <div class="staff-name-title">${emp.name}</div>
+                <div class="staff-role-subtitle">${emp.role || 'Staff Member'} ${emp.phone ? '• ' + emp.phone : ''}</div>
+              </div>
+            </div>
+          </td>
+          <td style="font-weight: 600; color: #475569; font-size: 12px;">
+            ${formatIsoDateToDisplay(activeDate)}
+          </td>
+          <td>
+            <select class="attendance-status-select" data-status="${record.status}" onchange="window.updateEmployeeAttendanceStatus('${emp.id}', this.value, this)">
+              <option value="Present" ${record.status === 'Present' ? 'selected' : ''}>🟢 Present</option>
+              <option value="Absent" ${record.status === 'Absent' ? 'selected' : ''}>🔴 Absent</option>
+              <option value="Half Day" ${record.status === 'Half Day' ? 'selected' : ''}>🟠 Half Day</option>
+              <option value="Leave" ${record.status === 'Leave' ? 'selected' : ''}>🟣 On Leave</option>
+            </select>
+          </td>
+          <td>
+            <input type="text" class="attendance-notes-input" placeholder="Optional notes / remarks..." value="${record.notes || ''}" oninput="window.updateEmployeeAttendanceNotes('${emp.id}', this.value)">
+          </td>
+          <td style="text-align: center;">
+            <button type="button" class="btn-action-icon delete" onclick="window.deleteEmployee('${emp.id}')" title="Delete Staff Member">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#EF4444" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            </button>
+          </td>
+        `;
+        tableBody.appendChild(tr);
+      });
+    }
+
+    updateAttendanceStats(activeDate);
+    renderMonthlyAttendanceReport();
+  };
+
+  const updateAttendanceStats = (dateStr) => {
+    const totalEl = document.getElementById('attStatTotal');
+    const presentEl = document.getElementById('attStatPresent');
+    const absentEl = document.getElementById('attStatAbsent');
+    const othersEl = document.getElementById('attStatOthers');
+    const rateEl = document.getElementById('attStatRate');
+
+    const totalStaff = state.employees.length;
+    const dailyRecords = state.attendanceRecords[dateStr] || [];
+
+    let present = 0;
+    let absent = 0;
+    let others = 0;
+
+    dailyRecords.forEach(r => {
+      if (r.status === 'Present') present++;
+      else if (r.status === 'Absent') absent++;
+      else if (r.status === 'Half Day' || r.status === 'Leave') others++;
+    });
+
+    const rate = totalStaff > 0 ? Math.round((present / totalStaff) * 100) : 0;
+
+    if (totalEl) totalEl.textContent = totalStaff;
+    if (presentEl) presentEl.textContent = present;
+    if (absentEl) absentEl.textContent = absent;
+    if (othersEl) othersEl.textContent = others;
+    if (rateEl) rateEl.textContent = `${rate}% Rate`;
+  };
+
+  const renderMonthlyAttendanceReport = () => {
+    const monthlyTableBody = document.getElementById('attendanceMonthlyTableBody');
+    const monthPicker = document.getElementById('attendanceMonthPicker');
+    if (!monthlyTableBody) return;
+
+    const selectedMonth = (monthPicker && monthPicker.value) || state.selectedAttendanceDate.slice(0, 7);
+    monthlyTableBody.innerHTML = '';
+
+    if (state.employees.length === 0) {
+      monthlyTableBody.innerHTML = `
+        <tr><td colspan="7" style="text-align:center; padding:20px; color:#64748B;">No employees registered yet.</td></tr>
+      `;
+      return;
+    }
+
+    state.employees.forEach((emp, index) => {
+      let presentCount = 0;
+      let absentCount = 0;
+      let otherCount = 0;
+      let totalLoggedDays = 0;
+
+      // Scan all attendance keys for the selected month
+      Object.keys(state.attendanceRecords).forEach(dateKey => {
+        if (dateKey.startsWith(selectedMonth)) {
+          const records = state.attendanceRecords[dateKey] || [];
+          const rec = records.find(r => r.employeeId === emp.id);
+          if (rec) {
+            totalLoggedDays++;
+            if (rec.status === 'Present') presentCount++;
+            else if (rec.status === 'Absent') absentCount++;
+            else otherCount++;
+          }
+        }
+      });
+
+      const rate = totalLoggedDays > 0 ? Math.round((presentCount / totalLoggedDays) * 100) : 0;
+
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td style="text-align:center; font-weight:700; color:#64748B;">${index + 1}</td>
+        <td style="font-weight:700; color:#1E293B;">${emp.name}</td>
+        <td style="color:#64748B;">${emp.role || 'Staff'}</td>
+        <td style="text-align:center; font-weight:700; color:#059669;">${presentCount} days</td>
+        <td style="text-align:center; font-weight:700; color:#E11D48;">${absentCount} days</td>
+        <td style="text-align:center; font-weight:600; color:#D97706;">${otherCount} days</td>
+        <td style="text-align:center;">
+          <span class="status-pill ${rate >= 75 ? 'paid' : 'pending'}">${rate}%</span>
+        </td>
+      `;
+      monthlyTableBody.appendChild(tr);
+    });
+  };
+
+  // Window methods for inline table interactions
+  window.updateEmployeeAttendanceStatus = (empId, newStatus, selectEl) => {
+    const activeDate = state.selectedAttendanceDate;
+    const dailyRecords = ensureDailyAttendanceList(activeDate);
+    const rec = dailyRecords.find(r => r.employeeId === empId);
+    if (rec) {
+      rec.status = newStatus;
+    }
+    if (selectEl) {
+      selectEl.dataset.status = newStatus;
+    }
+    saveLocalData();
+    updateAttendanceStats(activeDate);
+    renderMonthlyAttendanceReport();
+  };
+
+  window.updateEmployeeAttendanceNotes = (empId, notes) => {
+    const activeDate = state.selectedAttendanceDate;
+    const dailyRecords = ensureDailyAttendanceList(activeDate);
+    const rec = dailyRecords.find(r => r.employeeId === empId);
+    if (rec) {
+      rec.notes = notes;
+      saveLocalData();
+    }
+  };
+
+  window.deleteEmployee = (empId) => {
+    const emp = state.employees.find(e => e.id === empId);
+    const name = emp ? emp.name : 'this staff member';
+    if (!confirm(`Are you sure you want to remove ${name} from the staff list?`)) return;
+
+    state.employees = state.employees.filter(e => e.id !== empId);
+    const activeDate = state.selectedAttendanceDate;
+    if (state.attendanceRecords[activeDate]) {
+      state.attendanceRecords[activeDate] = state.attendanceRecords[activeDate].filter(r => r.employeeId !== empId);
+    }
+
+    saveLocalData();
+    renderAttendancePageView();
+    showToast(`Staff member removed`, 'normal');
+  };
+
+  const exportAttendanceCSV = () => {
+    const monthPicker = document.getElementById('attendanceMonthPicker');
+    const selectedMonth = (monthPicker && monthPicker.value) || state.selectedAttendanceDate.slice(0, 7);
+
+    let csv = 'S.No,Employee Name,Role,Phone,Date,Status,Notes\n';
+    let rowIdx = 1;
+
+    const dates = Object.keys(state.attendanceRecords)
+      .filter(d => d.startsWith(selectedMonth))
+      .sort();
+
+    if (dates.length === 0) {
+      showToast('No attendance records logged for ' + selectedMonth, 'normal');
+      return;
+    }
+
+    dates.forEach(d => {
+      const list = state.attendanceRecords[d] || [];
+      list.forEach(rec => {
+        const emp = state.employees.find(e => e.id === rec.employeeId);
+        const name = (rec.employeeName || (emp ? emp.name : '')).replace(/"/g, '""');
+        const role = (emp ? emp.role || '' : '').replace(/"/g, '""');
+        const phone = (emp ? emp.phone || '' : '').replace(/"/g, '""');
+        const status = rec.status || 'Present';
+        const notes = (rec.notes || '').replace(/"/g, '""');
+
+        csv += `${rowIdx++},"${name}","${role}","${phone}",${d},"${status}","${notes}"\n`;
+      });
+    });
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `Attendance_${selectedMonth}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+    showToast('Attendance CSV exported!', 'success');
+  };
+
+  const initAttendanceModule = () => {
+    const dateInput = document.getElementById('attendanceDateInput');
+    const prevBtn = document.getElementById('btnPrevAttendanceDate');
+    const nextBtn = document.getElementById('btnNextAttendanceDate');
+    const todayBtn = document.getElementById('btnTodayAttendanceDate');
+    const markAllBtn = document.getElementById('btnMarkAllPresent');
+    const saveBtn = document.getElementById('btnSaveAttendance');
+    const searchStaffInput = document.getElementById('searchAttendanceStaffInput');
+    const monthPicker = document.getElementById('attendanceMonthPicker');
+    const exportBtn = document.getElementById('btnExportAttendanceCsv');
+
+    // Add Staff Modal references
+    const addStaffModal = document.getElementById('addEmployeeModal');
+    const openAddStaffBtn = document.getElementById('btnOpenAddEmployeeModal');
+    const closeAddStaffBtn = document.getElementById('btnCloseEmployeeModal');
+    const cancelAddStaffBtn = document.getElementById('btnCancelAddEmployee');
+    const addStaffForm = document.getElementById('addEmployeeForm');
+
+    // Set initial date picker values
+    if (dateInput) {
+      dateInput.value = state.selectedAttendanceDate;
+      dateInput.addEventListener('change', (e) => {
+        if (e.target.value) {
+          state.selectedAttendanceDate = e.target.value;
+          renderAttendancePageView();
+        }
+      });
+    }
+
+    if (monthPicker) {
+      monthPicker.value = state.selectedAttendanceDate.slice(0, 7);
+      monthPicker.addEventListener('change', () => {
+        renderMonthlyAttendanceReport();
+      });
+    }
+
+    if (prevBtn) {
+      prevBtn.addEventListener('click', () => {
+        const d = new Date(state.selectedAttendanceDate + 'T00:00:00');
+        d.setDate(d.getDate() - 1);
+        state.selectedAttendanceDate = d.toISOString().split('T')[0];
+        if (dateInput) dateInput.value = state.selectedAttendanceDate;
+        renderAttendancePageView();
+      });
+    }
+
+    if (nextBtn) {
+      nextBtn.addEventListener('click', () => {
+        const d = new Date(state.selectedAttendanceDate + 'T00:00:00');
+        d.setDate(d.getDate() + 1);
+        state.selectedAttendanceDate = d.toISOString().split('T')[0];
+        if (dateInput) dateInput.value = state.selectedAttendanceDate;
+        renderAttendancePageView();
+      });
+    }
+
+    if (todayBtn) {
+      todayBtn.addEventListener('click', () => {
+        state.selectedAttendanceDate = new Date().toISOString().split('T')[0];
+        if (dateInput) dateInput.value = state.selectedAttendanceDate;
+        renderAttendancePageView();
+      });
+    }
+
+    if (markAllBtn) {
+      markAllBtn.addEventListener('click', () => {
+        const dailyRecords = ensureDailyAttendanceList(state.selectedAttendanceDate);
+        dailyRecords.forEach(r => {
+          r.status = 'Present';
+        });
+        saveLocalData();
+        renderAttendancePageView();
+        showToast('All staff marked Present for today! ✓', 'success');
+      });
+    }
+
+    if (saveBtn) {
+      saveBtn.addEventListener('click', () => {
+        saveLocalData();
+        showToast('Attendance recorded and saved successfully! 💾', 'success');
+      });
+    }
+
+    if (searchStaffInput) {
+      searchStaffInput.addEventListener('input', (e) => {
+        renderAttendancePageView(e.target.value);
+      });
+    }
+
+    if (exportBtn) {
+      exportBtn.addEventListener('click', exportAttendanceCSV);
+    }
+
+    // Modal controls
+    if (openAddStaffBtn && addStaffModal) {
+      openAddStaffBtn.addEventListener('click', () => {
+        addStaffModal.classList.add('active');
+        const nameInp = document.getElementById('newEmployeeName');
+        if (nameInp) nameInp.focus();
+      });
+    }
+
+    const closeEmployeeModal = () => {
+      if (addStaffModal) addStaffModal.classList.remove('active');
+      if (addStaffForm) addStaffForm.reset();
+    };
+
+    if (closeAddStaffBtn) closeAddStaffBtn.addEventListener('click', closeEmployeeModal);
+    if (cancelAddStaffBtn) cancelAddStaffBtn.addEventListener('click', closeEmployeeModal);
+
+    if (addStaffForm) {
+      addStaffForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const nameInp = document.getElementById('newEmployeeName');
+        const roleInp = document.getElementById('newEmployeeRole');
+        const phoneInp = document.getElementById('newEmployeePhone');
+
+        const name = nameInp ? nameInp.value.trim() : '';
+        const role = roleInp ? roleInp.value.trim() : '';
+        const phone = phoneInp ? phoneInp.value.trim() : '';
+
+        if (!name) {
+          showToast('Please enter the employee name', 'error');
+          return;
+        }
+
+        const newEmp = {
+          id: generateUUID(),
+          name: name,
+          role: role || 'Staff Member',
+          phone: phone || ''
+        };
+
+        state.employees.push(newEmp);
+        saveLocalData();
+        closeEmployeeModal();
+        renderAttendancePageView();
+        showToast(`Added ${newEmp.name} to staff roster!`, 'success');
+      });
+    }
+  };
+
   loadLocalData();
+  initAttendanceModule();
   renderClinicSelect();
   renderRecentBillsTable();
   renderAllBillsPageView();

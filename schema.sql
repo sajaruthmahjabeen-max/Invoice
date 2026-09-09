@@ -63,14 +63,39 @@ INSERT INTO company_settings (id, company_name, tagline, address, phone, email, 
 VALUES (1, 'Trilion Thunders Company', 'Clinic & Hospital Covers', '123, Business Street, Chennai - 600001', '+91 98765 43210', 'support@trilionthunders.com', 'www.trilionthunders.com', 'INV-2026-', 'Saju Mauji')
 ON CONFLICT (id) DO NOTHING;
 
--- 7. ENABLE ROW LEVEL SECURITY (RLS) & ALLOW ANONYMOUS ACCESS FOR THIS APP
+-- 7. EMPLOYEES / STAFF TABLE
+CREATE TABLE IF NOT EXISTS employees (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  name TEXT NOT NULL,
+  role TEXT,
+  phone TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- 8. ATTENDANCE LOGS TABLE
+CREATE TABLE IF NOT EXISTS attendance (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  employee_id UUID REFERENCES employees(id) ON DELETE CASCADE,
+  employee_name TEXT NOT NULL,
+  date TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'Present',
+  notes TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- 9. ENABLE ROW LEVEL SECURITY (RLS) & ALLOW ANONYMOUS ACCESS FOR THIS APP
 ALTER TABLE clinics ENABLE ROW LEVEL SECURITY;
 ALTER TABLE bills ENABLE ROW LEVEL SECURITY;
 ALTER TABLE products ENABLE ROW LEVEL SECURITY;
 ALTER TABLE company_settings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE employees ENABLE ROW LEVEL SECURITY;
+ALTER TABLE attendance ENABLE ROW LEVEL SECURITY;
 
 -- Allow full read/write for all users (Anon Key)
 CREATE POLICY "Allow anon all on clinics" ON clinics FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow anon all on bills" ON bills FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow anon all on products" ON products FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow anon all on company_settings" ON company_settings FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow anon all on employees" ON employees FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow anon all on attendance" ON attendance FOR ALL USING (true) WITH CHECK (true);
+

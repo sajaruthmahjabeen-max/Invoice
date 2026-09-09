@@ -1690,6 +1690,7 @@ select.form-control {
   #view-clinics,
   #view-all-bills,
   #view-products,
+  #view-attendance,
   #view-sales-report,
   #view-outstanding,
   #view-settings,
@@ -2666,3 +2667,159 @@ div#app-container.visible {
     font-size: 22px !important;
   }
 }
+
+/* ========================================================
+   ATTENDANCE MODULE STYLING
+======================================================== */
+.attendance-date-picker-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: white;
+  padding: 4px 6px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-color);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.attendance-date-input {
+  border: none;
+  outline: none;
+  font-family: var(--font-main);
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #1E293B;
+  background: transparent;
+  cursor: pointer;
+  padding: 3px 6px;
+}
+
+.btn-date-nav {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid #E2E8F0;
+  background: #F8FAFC;
+  color: #64748B;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-date-nav:hover {
+  background: #F1F5F9;
+  color: #0F172A;
+  border-color: #CBD5E1;
+}
+
+.btn-date-today {
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  background: #F1F5F9;
+  border: none;
+  color: #475569;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.btn-date-today:hover {
+  background: #E2E8F0;
+  color: #0F172A;
+}
+
+/* Status Select Dropdown */
+.attendance-status-select {
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-main);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.2s ease;
+  width: 100%;
+  max-width: 170px;
+  border: 1.5px solid #CBD5E1;
+  background-color: #FFFFFF;
+}
+
+.attendance-status-select[data-status="Present"] {
+  background-color: #ECFDF5 !important;
+  color: #047857 !important;
+  border-color: #10B981 !important;
+}
+
+.attendance-status-select[data-status="Absent"] {
+  background-color: #FFF1F2 !important;
+  color: #BE123C !important;
+  border-color: #F43F5E !important;
+}
+
+.attendance-status-select[data-status="Half Day"] {
+  background-color: #FFFBEB !important;
+  color: #B45309 !important;
+  border-color: #F59E0B !important;
+}
+
+.attendance-status-select[data-status="Leave"] {
+  background-color: #F5F3FF !important;
+  color: #6D28D9 !important;
+  border-color: #8B5CF6 !important;
+}
+
+/* Staff Table Cells */
+.staff-name-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.staff-avatar-initial {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #EC4899 0%, #F97316 100%);
+  color: #FFFFFF;
+  font-weight: 800;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 2px 6px rgba(236, 72, 153, 0.25);
+}
+
+.staff-name-title {
+  font-weight: 700;
+  color: #0F172A;
+  font-size: 13px;
+  line-height: 1.2;
+}
+
+.staff-role-subtitle {
+  font-size: 11px;
+  color: #64748B;
+  margin-top: 1px;
+}
+
+.attendance-notes-input {
+  width: 100%;
+  padding: 6px 10px;
+  border: 1px solid #E2E8F0;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-family: var(--font-main);
+  background: #F8FAFC;
+  transition: all 0.2s;
+}
+
+.attendance-notes-input:focus {
+  background: #FFFFFF;
+  border-color: #EC4899;
+  outline: none;
+}
+

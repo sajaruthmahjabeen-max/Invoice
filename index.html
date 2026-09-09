@@ -271,6 +271,12 @@
             <span>Products / Sizes</span>
           </div>
         </button>
+        <button class="nav-item" data-view="view-attendance" id="nav-attendance">
+          <div class="nav-item-left">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 11l-3 3-2-2"/><path d="M19 21v-2a4 4 0 0 0-1-2.5"/></svg>
+            <span>Attendance</span>
+          </div>
+        </button>
       </div>
 
       <div class="nav-section">
@@ -791,6 +797,141 @@
       </div>
     </div>
 
+    <!-- ==================== VIEW: ATTENDANCE ==================== -->
+    <div class="page-view" id="view-attendance">
+      <div class="page-header-banner">
+        <div>
+          <h2>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#EC4899" stroke-width="2.2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="M9 16l2 2 4-4"/></svg>
+            Staff Attendance Management
+          </h2>
+          <p>Mark daily attendance, track presence rates, manage staff roster, and view monthly logs.</p>
+        </div>
+        <div class="table-toolbar" style="flex-wrap: wrap; gap: 8px;">
+          <!-- Date Navigator -->
+          <div class="attendance-date-picker-wrap">
+            <button type="button" class="btn-date-nav" id="btnPrevAttendanceDate" title="Previous Day">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+            </button>
+            <input type="date" id="attendanceDateInput" class="attendance-date-input">
+            <button type="button" class="btn-date-nav" id="btnNextAttendanceDate" title="Next Day">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
+            <button type="button" class="btn-date-today" id="btnTodayAttendanceDate">Today</button>
+          </div>
+
+          <button type="button" class="btn-pill-reset" id="btnMarkAllPresent" style="padding: 7px 14px; font-weight: 600; border-color: #10B981; color: #059669;">
+            ✓ Mark All Present
+          </button>
+          <button type="button" class="btn-add-clinic-pill" id="btnOpenAddEmployeeModal" style="background: linear-gradient(90deg, #EC4899 0%, #F97316 100%);">
+            + Add Staff
+          </button>
+          <button type="button" class="btn-pill-generate" id="btnSaveAttendance">
+            Save Attendance
+          </button>
+        </div>
+      </div>
+
+      <!-- Attendance Stats Cards -->
+      <section class="stats-grid" style="margin-bottom: 20px;">
+        <div class="stat-card purple">
+          <div class="stat-info">
+            <span class="stat-label">Total Staff</span>
+            <span class="stat-value" id="attStatTotal">0</span>
+            <span class="stat-trend">Registered Employees</span>
+          </div>
+        </div>
+        <div class="stat-card teal">
+          <div class="stat-info">
+            <span class="stat-label">Present</span>
+            <span class="stat-value" id="attStatPresent" style="color: #059669;">0</span>
+            <span class="stat-trend" id="attStatRate">0% Rate</span>
+          </div>
+        </div>
+        <div class="stat-card pink">
+          <div class="stat-info">
+            <span class="stat-label">Absent</span>
+            <span class="stat-value" id="attStatAbsent" style="color: #E11D48;">0</span>
+            <span class="stat-trend">Unexcused / Absent</span>
+          </div>
+        </div>
+        <div class="stat-card orange">
+          <div class="stat-info">
+            <span class="stat-label">Half Day / Leave</span>
+            <span class="stat-value" id="attStatOthers">0</span>
+            <span class="stat-trend">Excused / Other</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Main Daily Attendance Table Card -->
+      <div class="table-card" style="margin-bottom: 24px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
+          <div>
+            <h3 class="table-card-title" style="margin-bottom: 2px;">Daily Attendance Sheet</h3>
+            <span style="font-size: 12px; color: var(--text-muted);" id="attCurrentDateLabel">Date: Today</span>
+          </div>
+          <div class="search-box-pill" style="min-width: 220px;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" id="searchAttendanceStaffInput" placeholder="Filter employee name...">
+          </div>
+        </div>
+
+        <div class="data-table-container">
+          <table class="clean-table attendance-table">
+            <thead>
+              <tr>
+                <th style="width: 70px; text-align: center;">S.No</th>
+                <th>Employee Name</th>
+                <th style="width: 150px;">Date</th>
+                <th style="width: 200px;">Status</th>
+                <th>Notes / Remarks</th>
+                <th style="width: 100px; text-align: center;">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="attendanceTableBody">
+              <!-- Dynamically populated rows with S.No, Employee Name, Date, Present/Absent dropdown -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Monthly Summary & Export -->
+      <div class="table-card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
+          <div>
+            <h3 class="table-card-title" style="margin-bottom: 2px;">Monthly Attendance Overview</h3>
+            <span style="font-size: 12px; color: var(--text-muted);">Summary of total days present &amp; absent per staff member</span>
+          </div>
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <input type="month" id="attendanceMonthPicker" class="attendance-date-input" style="padding: 6px 12px;">
+            <button type="button" class="btn-pill-reset" id="btnExportAttendanceCsv" style="font-size: 12px; padding: 7px 12px;">
+              📥 Export CSV
+            </button>
+          </div>
+        </div>
+
+        <div class="data-table-container">
+          <table class="clean-table">
+            <thead>
+              <tr>
+                <th style="width: 70px; text-align: center;">S.No</th>
+                <th>Employee Name</th>
+                <th>Designation / Role</th>
+                <th style="text-align: center;">Total Present</th>
+                <th style="text-align: center;">Total Absent</th>
+                <th style="text-align: center;">Half-Day / Leave</th>
+                <th style="text-align: center;">Attendance %</th>
+              </tr>
+            </thead>
+            <tbody id="attendanceMonthlyTableBody">
+              <!-- Dynamically rendered monthly roll -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
     <!-- ==================== VIEW 6: SALES REPORT ==================== -->
     <div class="page-view" id="view-sales-report">
       <div class="page-header-banner">
@@ -1097,6 +1238,38 @@
     <div class="modal-footer">
       <button type="button" class="btn-pill-generate" id="btnSelectFromDetails">Create Bill for this Clinic</button>
     </div>
+  </div>
+</div>
+
+<!-- MODAL: ADD NEW EMPLOYEE / STAFF -->
+<div class="modal-overlay" id="addEmployeeModal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h3>+ Add Staff Member</h3>
+      <button type="button" class="btn-modal-close" id="btnCloseEmployeeModal">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <form id="addEmployeeForm">
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="newEmployeeName">Staff / Employee Name *</label>
+          <input type="text" id="newEmployeeName" class="form-control" placeholder="e.g. Ramesh Kumar" required>
+        </div>
+        <div class="form-group">
+          <label for="newEmployeeRole">Role / Designation</label>
+          <input type="text" id="newEmployeeRole" class="form-control" placeholder="e.g. Production Master / Tailor / Helper">
+        </div>
+        <div class="form-group">
+          <label for="newEmployeePhone">Phone Number</label>
+          <input type="text" id="newEmployeePhone" class="form-control" placeholder="e.g. +91 98765 43210">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-pill-reset" id="btnCancelAddEmployee">Cancel</button>
+        <button type="submit" class="btn-pill-generate">Save Staff Member</button>
+      </div>
+    </form>
   </div>
 </div>
 
