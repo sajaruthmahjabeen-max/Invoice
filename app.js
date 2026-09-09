@@ -570,9 +570,10 @@ document.addEventListener('DOMContentLoaded', () => {
         state.employees = [];
       }
 
-      // Remove any previously seeded default staff members
+      // Remove any previously seeded default staff members or test staff
       state.employees = (state.employees || []).filter(e =>
-        e && !['emp-1', 'emp-2', 'emp-3', 'emp-4', 'emp-5', 'emp-6'].includes(e.id)
+        e && !['emp-1', 'emp-2', 'emp-3', 'emp-4', 'emp-5', 'emp-6'].includes(e.id) &&
+        e.name !== 'Test Staff' && e.id !== 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11'
       );
 
       const savedAttendance = localStorage.getItem('coverplus_attendance');
@@ -590,7 +591,8 @@ document.addEventListener('DOMContentLoaded', () => {
       Object.keys(state.attendanceRecords).forEach(k => {
         if (Array.isArray(state.attendanceRecords[k])) {
           state.attendanceRecords[k] = state.attendanceRecords[k].filter(r =>
-            r && !['emp-1', 'emp-2', 'emp-3', 'emp-4', 'emp-5', 'emp-6'].includes(r.employeeId)
+            r && !['emp-1', 'emp-2', 'emp-3', 'emp-4', 'emp-5', 'emp-6'].includes(r.employeeId) &&
+            r.employeeName !== 'Test Staff' && r.employeeId !== 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11'
           );
         }
       });
@@ -2454,52 +2456,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // Sync employees from Supabase Cloud
       if (Array.isArray(dbEmployees)) {
-        if (dbEmployees.length > 0) {
-          state.employees = dbEmployees.map(e => ({
-            id: e.id,
-            name: e.name,
-            role: e.role || '',
-            phone: e.phone || ''
-          }));
-          hasCloudData = true;
-        } else if (state.employees.length > 0) {
-          // If cloud has 0 employees and this device has local real employees, push them!
-          const empPayloads = state.employees.map(e => ({
-            id: e.id,
-            name: e.name,
-            role: e.role || '',
-            phone: e.phone || '',
-            created_at: new Date().toISOString()
-          }));
-          try {
-            await cloudDb.upsert('employees', empPayloads, 'id');
-          } catch (eErr) {
-            console.warn('Auto upload local employees notice:', eErr);
-          }
-        }
+        state.employees = dbEmployees.map(e => ({
+          id: e.id,
+          name: e.name,
+          role: e.role || '',
+          phone: e.phone || ''
+        }));
+        hasCloudData = true;
       }
 
       // Sync attendance records from Supabase Cloud
       if (Array.isArray(dbAttendance)) {
-        if (dbAttendance.length > 0) {
-          const map = {};
-          dbAttendance.forEach(a => {
-            if (!map[a.date]) map[a.date] = [];
-            map[a.date].push({
-              employeeId: a.employee_id,
-              employeeName: a.employee_name,
-              date: a.date,
-              status: a.status || 'Present',
-              notes: a.notes || ''
-            });
+        const map = {};
+        dbAttendance.forEach(a => {
+          if (!map[a.date]) map[a.date] = [];
+          map[a.date].push({
+            employeeId: a.employee_id,
+            employeeName: a.employee_name,
+            date: a.date,
+            status: a.status || 'Present',
+            notes: a.notes || ''
           });
-          state.attendanceRecords = map;
-          hasCloudData = true;
-        } else if (Object.keys(state.attendanceRecords).length > 0) {
-          for (const d of Object.keys(state.attendanceRecords)) {
-            await cloudSaveAttendanceDay(d, state.attendanceRecords[d]);
-          }
-        }
+        });
+        state.attendanceRecords = map;
+        hasCloudData = true;
       }
 
       if (!state.selectedClinicId || !state.clinics.some(c => c.id === state.selectedClinicId)) {
@@ -3066,6 +3046,18 @@ document.addEventListener('DOMContentLoaded', () => {
     saveLocalData();
     updateAttendanceStats(activeDate);
     renderMonthlyAttendanceReport();
+    triggerAutoSaveAttendance(activeDate);
+  };
+
+  let attendanceCloudSaveTimer = null;
+  const triggerAutoSaveAttendance = (dateStr) => {
+    clearTimeout(attendanceCloudSaveTimer);
+    attendanceCloudSaveTimer = setTimeout(async () => {
+      const records = state.attendanceRecords[dateStr] || [];
+      if (records.length > 0) {
+        await cloudSaveAttendanceDay(dateStr, records);
+      }
+    }, 800);
   };
 
   window.updateEmployeeAttendanceNotes = (empId, notes) => {
@@ -3075,6 +3067,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (rec) {
       rec.notes = notes;
       saveLocalData();
+      triggerAutoSaveAttendance(activeDate);
     }
   };
 
@@ -3200,7 +3193,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (markAllBtn) {
-      markAllBtn.addEventListener('click', () => {
+      markAllBtn.addEventListener('click', async () => {
         const dailyRecords = ensureDailyAttendanceList(state.selectedAttendanceDate);
         dailyRecords.forEach(r => {
           r.status = 'Present';
@@ -3208,6 +3201,7 @@ document.addEventListener('DOMContentLoaded', () => {
         saveLocalData();
         renderAttendancePageView();
         showToast('All staff marked Present for today! ✓', 'success');
+        await cloudSaveAttendanceDay(state.selectedAttendanceDate, dailyRecords);
       });
     }
 
