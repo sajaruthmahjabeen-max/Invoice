@@ -867,6 +867,9 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       renderSettingsUI();
       updateProductsCatalogUI();
+      renderDashboardClinicsTable();
+      renderRecentBillsTable();
+      updateStatsUI();
     }
 
     window.scrollTo({ top: 0, behavior: 'smooth' });
