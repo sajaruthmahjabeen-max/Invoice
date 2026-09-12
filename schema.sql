@@ -1,6 +1,15 @@
+-- ========================================================
+-- IMPORTANT 1-CLICK MIGRATION: RUN THIS IN SUPABASE SQL EDITOR
+-- Dashboard: https://supabase.com/dashboard/project/qhuhngicocldbcmbegfg/sql/new
+-- Unlocks 4-decimal precision for rates (0.536, 0.078, etc.) without PostgreSQL rounding:
+-- ========================================================
+ALTER TABLE products ALTER COLUMN rate TYPE NUMERIC(12, 4);
+ALTER TABLE bills ALTER COLUMN subtotal TYPE NUMERIC(12, 4);
+ALTER TABLE bills ALTER COLUMN total_amount TYPE NUMERIC(12, 4);
+-- ========================================================
+
 -- ===================================================
--- Trillion Thunders (KMS) — Supabase Database Schema
--- Run this SQL in your Supabase SQL Editor
+-- Trillion Thunders (KMS) — Full Supabase Database Schema
 -- Dashboard: https://supabase.com/dashboard/project/qhuhngicocldbcmbegfg/sql
 -- ===================================================
 

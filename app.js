@@ -719,11 +719,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
-  // Helper: Currency Formatter
+  // Helper: Currency Formatter (preserves exact decimals up to 4 places, minimum 2)
   const formatCurrency = (val) => {
     const num = Number(val || 0);
-    const decimalPart = num.toString().split('.')[1] || '';
-    const fractionDigits = Math.max(2, Math.min(decimalPart.length, 6));
+    const str = String(val !== undefined && val !== null ? val : 0);
+    const decimalPart = str.split('.')[1] || '';
+    const fractionDigits = Math.max(2, Math.min(decimalPart.length, 4));
     return '₹ ' + num.toLocaleString('en-IN', {
       minimumFractionDigits: fractionDigits,
       maximumFractionDigits: fractionDigits
@@ -732,9 +733,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Helper: Rate Formatter (exact decimals when > 2, otherwise 2 decimals)
   const formatRate = (val) => {
-    const num = Number(val || 0);
+    if (val === undefined || val === null || val === '') return '0.00';
+    const num = Number(val);
     if (isNaN(num)) return '0.00';
-    const str = num.toString();
+    const str = String(val);
     const decimalPart = str.split('.')[1] || '';
     if (decimalPart.length > 2) {
       return str;
@@ -744,8 +746,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Helper: Compact Rate Formatter for chips & options
   const formatCompactRate = (val) => {
-    const num = Number(val || 0);
+    if (val === undefined || val === null || val === '') return '0';
+    const num = Number(val);
     if (isNaN(num)) return '0';
+    const str = String(val).trim();
+    if (str.includes('.')) {
+      return str;
+    }
     return num.toString();
   };
 
@@ -1420,6 +1427,55 @@ document.addEventListener('DOMContentLoaded', () => {
         });
       }
     }
+
+    // Also keep the Dashboard's Clinics/Hospitals table in sync!
+    renderDashboardClinicsTable(searchTerm);
+  };
+
+  // --- DASHBOARD CLINICS / HOSPITALS TABLE ---
+  const renderDashboardClinicsTable = (searchTerm = '') => {
+    const tableBody = document.getElementById('clinicsTableBody');
+    if (!tableBody) return;
+    tableBody.innerHTML = '';
+
+    const searchVal = (searchTerm || (document.getElementById('searchClinicInput') ? document.getElementById('searchClinicInput').value : '')).toLowerCase().trim();
+    const filtered = state.clinics.filter(c =>
+      !searchVal ||
+      (c.name && c.name.toLowerCase().includes(searchVal)) ||
+      (c.phone && c.phone.toLowerCase().includes(searchVal)) ||
+      (c.address && c.address.toLowerCase().includes(searchVal)) ||
+      (c.contactPerson && c.contactPerson.toLowerCase().includes(searchVal))
+    );
+
+    if (filtered.length === 0) {
+      tableBody.innerHTML = `<tr><td colspan="4" style="text-align: center; padding: 24px; color: #94A3B8;">No clinics registered. Click <strong>+ Add New Clinic</strong> above.</td></tr>`;
+      return;
+    }
+
+    filtered.forEach(clinic => {
+      const clinicBills = (state.recentBills || []).filter(b => b.clinicId === clinic.id || b.clinicName === clinic.name);
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td style="font-weight: 700; color: #1E293B;">
+          ${clinic.name}
+          ${clinic.contactPerson ? `<div style="font-weight: normal; font-size: 11px; color: #64748B;">${clinic.contactPerson}</div>` : ''}
+        </td>
+        <td style="color: #475569; font-weight: 600;">${clinic.phone}</td>
+        <td style="color: #64748B; font-size: 11.5px;">${clinic.address}</td>
+        <td style="text-align: center;">
+          <div class="action-icons-group" style="justify-content: center; gap: 6px;">
+            <button class="btn-pill-draft" onclick="window.startBillForClinic('${clinic.id}')" style="padding: 4px 9px; font-size: 11px;" title="Create new invoice for ${clinic.name}">+ Bill</button>
+            <button class="btn-action-icon" onclick="window.openClinicDetailsById('${clinic.id}')" title="View Invoices & Details (${clinicBills.length} Invoices)">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0284C7" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+            <button class="btn-action-icon" onclick="window.openClinicEdit('${clinic.id}')" title="Edit Clinic Details">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            </button>
+          </div>
+        </td>
+      `;
+      tableBody.appendChild(tr);
+    });
   };
 
   // --- DEDICATED OUTSTANDING / UNPAID BILLS PAGE ---
@@ -2457,13 +2513,27 @@ document.addEventListener('DOMContentLoaded', () => {
 
       if (Array.isArray(dbProducts)) {
         if (dbProducts.length > 0) {
-          state.products = dbProducts.map(p => ({
-            id: p.id,
-            name: p.name,
-            sizes: p.sizes,
-            spec: p.spec,
-            rate: parseFloat(p.rate) || 0
-          }));
+          state.products = dbProducts.map(p => {
+            const local = (state.products || []).find(lp => lp.id === p.id);
+            let rate = parseFloat(p.rate) || 0;
+            // Guard: If local product has higher decimal precision than cloud (e.g. local 0.536 vs cloud 0.54), keep local rate!
+            if (local && typeof local.rate === 'number') {
+              const localStr = local.rate.toString();
+              const cloudStr = rate.toString();
+              const localDec = (localStr.split('.')[1] || '').length;
+              const cloudDec = (cloudStr.split('.')[1] || '').length;
+              if (localDec > cloudDec && Math.abs(local.rate - rate) < 0.01) {
+                rate = local.rate;
+              }
+            }
+            return {
+              id: p.id,
+              name: p.name,
+              sizes: p.sizes,
+              spec: p.spec,
+              rate: rate
+            };
+          });
           hasCloudData = true;
         } else {
           const realLocalProds = (state.products || []).filter(p => p.id !== 'p1' && p.id !== 'p2' && p.id !== 'p3' && p.id !== 'p4');
@@ -2532,6 +2602,7 @@ document.addEventListener('DOMContentLoaded', () => {
       renderRecentBillsTable();
       renderAllBillsPageView();
       renderClinicsPageView();
+      renderDashboardClinicsTable();
       renderProductsTable();
       updateProductsCatalogUI();
       renderOutstandingTable();
@@ -2547,21 +2618,80 @@ document.addEventListener('DOMContentLoaded', () => {
 
   window.syncWithCloud = cloudFetchAllData;
 
+  window.openClinicDetailsById = (clinicId) => {
+    const clinic = state.clinics.find(c => c.id === clinicId);
+    if (clinic) openClinicDetails(clinic);
+  };
+
   const openClinicDetails = (clinic) => {
     const detailsModalTitle = document.getElementById('detailsModalTitle');
     const detailsModalContent = document.getElementById('detailsModalContent');
     const clinicDetailsModal = document.getElementById('clinicDetailsModal');
     const btnSelectFromDetails = document.getElementById('btnSelectFromDetails');
 
-    if (detailsModalTitle) detailsModalTitle.textContent = `${clinic.name} Details`;
+    const clinicBills = (state.recentBills || []).filter(b => b.clinicId === clinic.id || b.clinicName === clinic.name);
+    const totalBilledVal = clinicBills.reduce((acc, curr) => acc + (curr.amount || 0), 0);
+
+    if (detailsModalTitle) detailsModalTitle.textContent = `${clinic.name} — Facility & Invoices`;
     if (detailsModalContent) {
       detailsModalContent.innerHTML = `
-        <div style="background:#FFF8F9; padding:14px; border-radius:10px; border:1px solid #FFE4E6;">
+        <div style="background:#FFF8F9; padding:14px; border-radius:10px; border:1px solid #FFE4E6; margin-bottom: 14px;">
           <h4 style="font-size:14px; font-weight:800; color:#1E293B;">${clinic.name}</h4>
           <p style="color:#64748B; font-size:12px; margin:4px 0 8px;">${clinic.address}</p>
           <div style="font-size:12px; color:#E11D48; font-weight:700;">Phone: ${clinic.phone}</div>
           <div style="font-size:12px; color:#475569; margin-top:4px;">Contact: ${clinic.contactPerson || 'Admin'}</div>
-          <div style="font-size:12px; color:#10B981; font-weight:700; margin-top:8px;">Total Billed: ${formatCurrency(clinic.totalBilled || 0)} (${clinic.totalOrders || 0} Orders)</div>
+          <div style="font-size:12px; color:#10B981; font-weight:700; margin-top:8px;">
+            Total Billed: ${formatCurrency(totalBilledVal)} (${clinicBills.length} Invoices)
+          </div>
+        </div>
+
+        <div style="margin-top: 10px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <strong style="font-size: 13px; color: #1E293B;">Billing History (${clinicBills.length})</strong>
+          </div>
+          ${clinicBills.length === 0 ? `
+            <div style="padding: 16px; text-align: center; color: #94A3B8; font-size: 12px; background: #F8FAFC; border: 1px dashed #CBD5E1; border-radius: 8px;">
+              No billing records found for this clinic yet. Click <strong>Create Bill for this Clinic</strong> below.
+            </div>
+          ` : `
+            <div style="max-height: 240px; overflow-y: auto; border: 1px solid #E2E8F0; border-radius: 8px;">
+              <table class="clean-table" style="margin: 0; font-size: 11.5px;">
+                <thead>
+                  <tr>
+                    <th>Invoice No.</th>
+                    <th>Date</th>
+                    <th style="text-align: right;">Amount</th>
+                    <th style="text-align: center;">Status</th>
+                    <th style="text-align: center;">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${clinicBills.map(b => `
+                    <tr>
+                      <td style="font-weight: 700; color: #1E293B;">${b.invoiceNo}</td>
+                      <td style="color: #64748B;">${b.date}</td>
+                      <td style="text-align: right; font-weight: 700; color: #0F172A;">${formatCurrency(b.amount)}</td>
+                      <td style="text-align: center;">
+                        <span class="status-pill ${b.status === 'Paid' ? 'paid' : 'unpaid'}" style="font-size: 10px; padding: 2px 7px;">
+                          ${b.status}
+                        </span>
+                      </td>
+                      <td style="text-align: center;">
+                        <div class="action-icons-group" style="justify-content: center; gap: 4px;">
+                          <button class="btn-action-icon" onclick="window.viewInvoiceDetail('${b.invoiceNo}'); document.getElementById('clinicDetailsModal').classList.remove('active');" title="View & Edit">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                          </button>
+                          <button class="btn-action-icon" onclick="window.downloadInvoicePdf('${b.invoiceNo}')" title="Download PDF">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+          `}
         </div>
       `;
     }
@@ -2865,10 +2995,19 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  const searchRecentBillsInput = document.getElementById('searchRecentBillsInput');
-  if (searchRecentBillsInput) {
-    searchRecentBillsInput.addEventListener('input', (e) => {
-      renderRecentBillsTable(e.target.value);
+  ['searchBillsInput', 'searchRecentBillsInput'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.addEventListener('input', (e) => {
+        renderRecentBillsTable(e.target.value);
+      });
+    }
+  });
+
+  const searchClinicInput = document.getElementById('searchClinicInput');
+  if (searchClinicInput) {
+    searchClinicInput.addEventListener('input', (e) => {
+      renderDashboardClinicsTable(e.target.value);
     });
   }
 
@@ -3444,6 +3583,7 @@ document.addEventListener('DOMContentLoaded', () => {
   renderRecentBillsTable();
   renderAllBillsPageView();
   renderClinicsPageView();
+  renderDashboardClinicsTable();
   renderProductsTable();
   updateProductsCatalogUI();
   renderOutstandingTable();
