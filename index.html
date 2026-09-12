@@ -818,6 +818,7 @@
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
             </button>
             <button type="button" class="btn-date-today" id="btnTodayAttendanceDate">Today</button>
+            <span id="attendanceDayBadge" class="attendance-day-badge" style="display: none;"></span>
           </div>
 
           <button type="button" class="btn-pill-reset" id="btnMarkAllPresent" style="padding: 7px 14px; font-weight: 600; border-color: #10B981; color: #059669;">
@@ -1193,12 +1194,13 @@
 <div class="modal-overlay" id="addProductModal">
   <div class="modal-box">
     <div class="modal-header">
-      <h3>+ Add New Product Line</h3>
+      <h3 id="addProductModalTitle">+ Add New Product Line</h3>
       <button class="btn-modal-close" id="btnCloseProductModal">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
     </div>
     <form id="addProductForm">
+      <input type="hidden" id="editProductId" value="">
       <div class="modal-body">
         <div class="form-group">
           <label for="newProductName">Product Name *</label>
@@ -1214,12 +1216,12 @@
         </div>
         <div class="form-group">
           <label for="newProductRate">Standard Unit Rate (₹) *</label>
-          <input type="number" id="newProductRate" class="form-control" placeholder="e.g. 75.00 or 0.078" step="any" min="0" required>
+          <input type="number" id="newProductRate" class="form-control" placeholder="e.g. 75.00 or 0.536" step="any" min="0" required>
         </div>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn-pill-reset" id="btnCancelAddProduct">Cancel</button>
-        <button type="submit" class="btn-pill-generate">Save Product</button>
+        <button type="submit" class="btn-pill-generate" id="btnSubmitProductModal">Save Product</button>
       </div>
     </form>
   </div>

@@ -31,6 +31,9 @@ CREATE TABLE IF NOT EXISTS bills (
   status TEXT NOT NULL DEFAULT 'Generated',
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
+-- If bills table already exists, run:
+-- ALTER TABLE bills ALTER COLUMN subtotal TYPE NUMERIC(12, 4);
+-- ALTER TABLE bills ALTER COLUMN total_amount TYPE NUMERIC(12, 4);
 
 -- 4. PRODUCTS & SIZES TABLE
 CREATE TABLE IF NOT EXISTS products (

@@ -18,7 +18,7 @@
   let isSignUpMode = false;
 
   // DOM references
-  const authScreen  = document.getElementById('auth-screen');
+  const authScreen = document.getElementById('auth-screen');
   const appContainer = document.getElementById('app-container');
 
   /* ------ Utility helpers ------ */
@@ -317,7 +317,7 @@
       try {
         showApp(JSON.parse(savedUser));
         return;
-      } catch (e) {}
+      } catch (e) { }
     }
 
     if (!_supa) {
@@ -458,7 +458,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (typeof crypto !== 'undefined' && crypto.randomUUID) {
       return crypto.randomUUID();
     }
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
       const r = Math.random() * 16 | 0;
       const v = c === 'x' ? r : (r & 0x3 | 0x8);
       return v.toString(16);
@@ -598,7 +598,7 @@ document.addEventListener('DOMContentLoaded', () => {
       });
 
       // Active Purge: permanently remove any lingering legacy demo records
-      state.clinics = (state.clinics || []).filter(c => 
+      state.clinics = (state.clinics || []).filter(c =>
         c && c.id !== 'c1' && c.id !== 'c2' && c.id !== 'c3' &&
         c.name !== 'Apollo Speciality Hospitals' &&
         c.name !== 'Fortis Malar Hospital' &&
@@ -606,10 +606,7 @@ document.addEventListener('DOMContentLoaded', () => {
       );
 
       state.recentBills = (state.recentBills || []).filter(b =>
-        b && b.id !== 'b1' && b.id !== 'b2' && b.id !== 'b3' &&
-        b.invoiceNo !== 'INV-2026-00001' &&
-        b.invoiceNo !== 'INV-2026-00002' &&
-        b.invoiceNo !== 'INV-2026-00003'
+        b && b.id !== 'b1' && b.id !== 'b2' && b.id !== 'b3'
       );
 
       state.products = (state.products || []).filter(p =>
@@ -814,11 +811,11 @@ document.addEventListener('DOMContentLoaded', () => {
   // --- ROUTING / VIEW SWITCHER ---
   const switchView = (viewId) => {
     state.currentView = viewId;
-    
+
     document.querySelectorAll('.page-view').forEach(view => {
       view.classList.remove('active');
     });
-    
+
     const targetView = document.getElementById(viewId);
     if (targetView) {
       targetView.classList.add('active');
@@ -940,7 +937,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (typeof inputBillDate.showPicker === 'function') {
           inputBillDate.showPicker();
         }
-      } catch (err) {}
+      } catch (err) { }
     });
   }
 
@@ -983,7 +980,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const updateSelectedClinicUI = () => {
     const clinic = state.clinics.find(c => c.id === state.selectedClinicId);
-    
+
     if (clinic) {
       if (quickClinicName) quickClinicName.textContent = clinic.name;
       if (quickClinicAddress) quickClinicAddress.textContent = clinic.address;
@@ -1141,7 +1138,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const id = Number(e.target.dataset.id);
         const item = state.items.find(i => i.id === id);
         if (item) {
-          item.qty = Math.max(0, parseInt(e.target.value) || 0);
+          item.qty = Math.max(0, parseFloat(e.target.value) || 0);
           const row = e.target.closest('tr');
           if (row) {
             const amountCell = row.querySelector('.item-amount-cell');
@@ -1332,7 +1329,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const tableBody = document.getElementById('clinicsFullTableBody');
     const searchVal = searchTerm || (document.getElementById('searchClinicPageInput') ? document.getElementById('searchClinicPageInput').value : '');
 
-    const filtered = state.clinics.filter(c => 
+    const filtered = state.clinics.filter(c =>
       c.name.toLowerCase().includes(searchVal.toLowerCase()) ||
       c.phone.toLowerCase().includes(searchVal.toLowerCase()) ||
       c.address.toLowerCase().includes(searchVal.toLowerCase())
@@ -2037,7 +2034,10 @@ document.addEventListener('DOMContentLoaded', () => {
         <td style="text-align: right; font-weight: 700; color: #E11D48;">${formatCurrency(p.rate)}</td>
         <td style="text-align: center;"><span class="status-pill paid">Active</span></td>
         <td style="text-align: center;">
-          <div class="action-icons-group" style="justify-content: center;">
+          <div class="action-icons-group" style="justify-content: center; gap: 6px;">
+            <button class="btn-action-icon edit" onclick="window.openProductEditModal('${p.id}')" title="Edit Product">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            </button>
             <button class="btn-action-icon delete" onclick="window.deleteProduct('${p.id}')" title="Delete Product">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#EF4444" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
             </button>
@@ -2046,6 +2046,33 @@ document.addEventListener('DOMContentLoaded', () => {
       `;
       tableBody.appendChild(tr);
     });
+  };
+
+  window.openProductEditModal = (productId) => {
+    const prod = state.products.find(p => p.id === productId);
+    if (!prod) return;
+
+    const modal = document.getElementById('addProductModal');
+    const modalTitle = document.getElementById('addProductModalTitle');
+    const submitBtn = document.getElementById('btnSubmitProductModal');
+    const editIdInput = document.getElementById('editProductId');
+    const nameInput = document.getElementById('newProductName');
+    const sizesInput = document.getElementById('newProductSizes');
+    const specInput = document.getElementById('newProductSpec');
+    const rateInput = document.getElementById('newProductRate');
+
+    if (modalTitle) modalTitle.textContent = '✏️ Edit Product Line';
+    if (submitBtn) submitBtn.textContent = 'Update Product';
+    if (editIdInput) editIdInput.value = prod.id;
+    if (nameInput) nameInput.value = prod.name || '';
+    if (sizesInput) sizesInput.value = prod.sizes || '';
+    if (specInput) specInput.value = prod.spec || '';
+    if (rateInput) rateInput.value = prod.rate !== undefined ? prod.rate : '';
+
+    if (modal) {
+      modal.classList.add('active');
+      if (nameInput) setTimeout(() => nameInput.focus(), 50);
+    }
   };
 
   window.deleteProduct = (productId) => {
@@ -2182,7 +2209,7 @@ document.addEventListener('DOMContentLoaded', () => {
           await cloudDb.update('clinics', {
             total_billed: clinic.totalBilled || 0
           }, `id=eq.${clinic.id}`);
-        } catch (uErr) {}
+        } catch (uErr) { }
       }
       return true;
     } catch (err) {
@@ -2213,6 +2240,21 @@ document.addEventListener('DOMContentLoaded', () => {
       return true;
     } catch (err) {
       console.error('Cloud save product error:', err);
+      return false;
+    }
+  };
+
+  const cloudUpdateProduct = async (product) => {
+    try {
+      await cloudDb.update('products', {
+        name: product.name,
+        sizes: product.sizes,
+        spec: product.spec,
+        rate: product.rate
+      }, `id=eq.${product.id}`);
+      return true;
+    } catch (err) {
+      console.error('Cloud update product error:', err);
       return false;
     }
   };
@@ -2327,7 +2369,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       try {
         await cloudDb.delete('attendance', `date=eq.${dateStr}`);
-      } catch (delErr) {}
+      } catch (delErr) { }
 
       const payloads = records.map(r => ({
         id: generateUUID(),
@@ -2404,8 +2446,6 @@ document.addEventListener('DOMContentLoaded', () => {
               const c = state.clinics.find(cl => cl.id === b.clinicId || cl.name === b.clinicName);
               await cloudSaveBill(b, c);
             }
-          } else {
-            state.recentBills = [];
           }
         }
         state.clinics.forEach(c => {
@@ -2603,10 +2643,22 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  const resetProductModalState = () => {
+    const form = document.getElementById('addProductForm');
+    if (form) form.reset();
+    const editIdInput = document.getElementById('editProductId');
+    if (editIdInput) editIdInput.value = '';
+    const modalTitle = document.getElementById('addProductModalTitle');
+    if (modalTitle) modalTitle.textContent = '+ Add New Product Line';
+    const submitBtn = document.getElementById('btnSubmitProductModal');
+    if (submitBtn) submitBtn.textContent = 'Save Product';
+  };
+
   ['btnOpenAddProduct', 'btnOpenAddProductPage', 'btnOpenAddProductModal'].forEach(id => {
     const btn = document.getElementById(id);
     if (btn) {
       btn.addEventListener('click', () => {
+        resetProductModalState();
         const modal = document.getElementById('addProductModal');
         if (modal) {
           modal.classList.add('active');
@@ -2621,6 +2673,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const btn = document.getElementById(id);
     if (btn) {
       btn.addEventListener('click', () => {
+        resetProductModalState();
         const modal = document.getElementById('addProductModal');
         if (modal) modal.classList.remove('active');
       });
@@ -2632,7 +2685,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const modal = document.getElementById(id);
     if (modal) {
       modal.addEventListener('click', (e) => {
-        if (e.target === modal) modal.classList.remove('active');
+        if (e.target === modal) {
+          if (id === 'addProductModal') resetProductModalState();
+          modal.classList.remove('active');
+        }
       });
     }
   });
@@ -2641,16 +2697,41 @@ document.addEventListener('DOMContentLoaded', () => {
   if (addProductForm) {
     addProductForm.addEventListener('submit', async (e) => {
       e.preventDefault();
+      const editId = (document.getElementById('editProductId') ? document.getElementById('editProductId').value : '').trim();
       const name = document.getElementById('newProductName').value.trim();
       const sizes = document.getElementById('newProductSizes').value.trim();
       const spec = document.getElementById('newProductSpec').value.trim();
-      const rate = parseFloat(document.getElementById('newProductRate').value);
+      const rateVal = document.getElementById('newProductRate').value.trim();
+      const rate = parseFloat(rateVal);
 
       if (!name || isNaN(rate) || rate < 0) {
         showToast('Please enter valid product details with a valid rate', 'error');
         return;
       }
 
+      if (editId) {
+        // Edit Mode: Update existing product
+        const prod = state.products.find(p => p.id === editId);
+        if (prod) {
+          prod.name = name;
+          prod.sizes = sizes;
+          prod.spec = spec;
+          prod.rate = rate;
+
+          saveLocalData();
+          renderProductsTable();
+          updateProductsCatalogUI();
+          cloudUpdateProduct(prod);
+
+          resetProductModalState();
+          const modal = document.getElementById('addProductModal');
+          if (modal) modal.classList.remove('active');
+          showToast(`Product "${name}" updated (₹${formatCompactRate(rate)})!`, 'success');
+          return;
+        }
+      }
+
+      // Add Mode: Create new product
       const newProd = {
         id: generateUUID(),
         name,
@@ -2665,7 +2746,7 @@ document.addEventListener('DOMContentLoaded', () => {
       updateProductsCatalogUI();
       cloudSaveProduct(newProd);
 
-      addProductForm.reset();
+      resetProductModalState();
       const modal = document.getElementById('addProductModal');
       if (modal) modal.classList.remove('active');
       showToast(`Product "${name}" added (₹${formatCompactRate(rate)})!`, 'success');
@@ -2815,7 +2896,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (parts.length === 3) {
         return `${parts[2]}/${parts[1]}/${parts[0]}`;
       }
-    } catch (e) {}
+    } catch (e) { }
     return isoStr;
   };
 
@@ -2831,6 +2912,10 @@ document.addEventListener('DOMContentLoaded', () => {
       state.attendanceRecords[dateStr] = [];
     }
 
+    const isSunday = new Date(dateStr + 'T00:00:00').getDay() === 0;
+    const defaultStatus = isSunday ? 'Sunday Off' : 'Present';
+    const defaultNotes = isSunday ? 'Weekly Off' : '';
+
     const currentRecords = state.attendanceRecords[dateStr];
     state.employees.forEach(emp => {
       let found = currentRecords.find(r => r.employeeId === emp.id);
@@ -2839,8 +2924,8 @@ document.addEventListener('DOMContentLoaded', () => {
           employeeId: emp.id,
           employeeName: emp.name,
           date: dateStr,
-          status: 'Present',
-          notes: ''
+          status: defaultStatus,
+          notes: defaultNotes
         });
       } else {
         found.employeeName = emp.name;
@@ -2871,12 +2956,29 @@ document.addEventListener('DOMContentLoaded', () => {
       monthPicker.value = activeDate.slice(0, 7);
     }
 
+    const dObj = new Date(activeDate + 'T00:00:00');
+    const dayOfWeek = dObj.getDay();
+    const isSunday = dayOfWeek === 0;
+
     if (dateLabel) {
       try {
-        const dObj = new Date(activeDate + 'T00:00:00');
         dateLabel.textContent = `Date: ${dObj.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}`;
       } catch (e) {
         dateLabel.textContent = `Date: ${activeDate}`;
+      }
+    }
+
+    const badgeEl = document.getElementById('attendanceDayBadge');
+    if (badgeEl) {
+      badgeEl.style.display = 'inline-flex';
+      if (isSunday) {
+        badgeEl.className = 'attendance-day-badge sunday';
+        badgeEl.innerHTML = '🏖️ Sunday — Office Leave (Weekly Off)';
+      } else {
+        const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        const dayName = dayNames[dayOfWeek] || 'Working Day';
+        badgeEl.className = 'attendance-day-badge normal';
+        badgeEl.innerHTML = `📅 ${dayName} (Working Day)`;
       }
     }
 
@@ -2887,7 +2989,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let displayList = state.employees.filter(emp => {
       if (!query) return true;
       return (emp.name && emp.name.toLowerCase().includes(query)) ||
-             (emp.role && emp.role.toLowerCase().includes(query));
+        (emp.role && emp.role.toLowerCase().includes(query));
     });
 
     tableBody.innerHTML = '';
@@ -2904,9 +3006,10 @@ document.addEventListener('DOMContentLoaded', () => {
       `;
     } else {
       displayList.forEach((emp, index) => {
+        const defaultStatus = isSunday ? 'Sunday Off' : 'Present';
         const record = dailyRecords.find(r => r.employeeId === emp.id) || {
-          status: 'Present',
-          notes: ''
+          status: defaultStatus,
+          notes: isSunday ? 'Weekly Off' : ''
         };
         const initials = getStaffInitials(emp.name);
 
@@ -2927,10 +3030,21 @@ document.addEventListener('DOMContentLoaded', () => {
           </td>
           <td>
             <select class="attendance-status-select" data-status="${record.status}" onchange="window.updateEmployeeAttendanceStatus('${emp.id}', this.value, this)">
-              <option value="Present" ${record.status === 'Present' ? 'selected' : ''}>🟢 Present</option>
-              <option value="Absent" ${record.status === 'Absent' ? 'selected' : ''}>🔴 Absent</option>
-              <option value="Half Day" ${record.status === 'Half Day' ? 'selected' : ''}>🟠 Half Day</option>
-              <option value="Leave" ${record.status === 'Leave' ? 'selected' : ''}>🟣 On Leave</option>
+              ${isSunday ? `
+                <option value="Sunday Off" ${record.status === 'Sunday Off' || record.status === 'Weekly Off' ? 'selected' : ''}>🏖️ Sunday Off (Weekly Off)</option>
+                <option value="Sunday Duty" ${record.status === 'Sunday Duty' ? 'selected' : ''}>⚡ Sunday Duty (Overtime)</option>
+                <option value="Present" ${record.status === 'Present' ? 'selected' : ''}>🟢 Present</option>
+                <option value="Absent" ${record.status === 'Absent' ? 'selected' : ''}>🔴 Absent</option>
+                <option value="Half Day" ${record.status === 'Half Day' ? 'selected' : ''}>🟠 Half Day</option>
+                <option value="Leave" ${record.status === 'Leave' ? 'selected' : ''}>🟣 On Leave</option>
+              ` : `
+                <option value="Present" ${record.status === 'Present' ? 'selected' : ''}>🟢 Present</option>
+                <option value="Absent" ${record.status === 'Absent' ? 'selected' : ''}>🔴 Absent</option>
+                <option value="Half Day" ${record.status === 'Half Day' ? 'selected' : ''}>🟠 Half Day</option>
+                <option value="Leave" ${record.status === 'Leave' ? 'selected' : ''}>🟣 On Leave</option>
+                <option value="Sunday Off" ${record.status === 'Sunday Off' || record.status === 'Weekly Off' ? 'selected' : ''}>🏖️ Weekly Off</option>
+                <option value="Sunday Duty" ${record.status === 'Sunday Duty' ? 'selected' : ''}>⚡ Sunday Duty</option>
+              `}
             </select>
           </td>
           <td>
@@ -2963,20 +3077,23 @@ document.addEventListener('DOMContentLoaded', () => {
     let present = 0;
     let absent = 0;
     let others = 0;
+    let sundayOff = 0;
 
     dailyRecords.forEach(r => {
-      if (r.status === 'Present') present++;
+      if (r.status === 'Present' || r.status === 'Sunday Duty') present++;
       else if (r.status === 'Absent') absent++;
-      else if (r.status === 'Half Day' || r.status === 'Leave') others++;
+      else if (r.status === 'Sunday Off' || r.status === 'Weekly Off') sundayOff++;
+      else others++;
     });
 
-    const rate = totalStaff > 0 ? Math.round((present / totalStaff) * 100) : 0;
+    const isSunday = new Date(dateStr + 'T00:00:00').getDay() === 0;
+    const rate = totalStaff > 0 ? (isSunday ? (present > 0 ? Math.round((present / totalStaff) * 100) : 100) : Math.round((present / totalStaff) * 100)) : 0;
 
     if (totalEl) totalEl.textContent = totalStaff;
     if (presentEl) presentEl.textContent = present;
     if (absentEl) absentEl.textContent = absent;
-    if (othersEl) othersEl.textContent = others;
-    if (rateEl) rateEl.textContent = `${rate}% Rate`;
+    if (othersEl) othersEl.textContent = isSunday ? `${sundayOff} Off` : others;
+    if (rateEl) rateEl.textContent = isSunday ? (present > 0 ? `${present} on Duty` : 'Sunday Off') : `${rate}% Rate`;
   };
 
   const renderMonthlyAttendanceReport = () => {
@@ -2998,7 +3115,8 @@ document.addEventListener('DOMContentLoaded', () => {
       let presentCount = 0;
       let absentCount = 0;
       let otherCount = 0;
-      let totalLoggedDays = 0;
+      let workingDaysLogged = 0;
+      let sundayDutyCount = 0;
 
       // Scan all attendance keys for the selected month
       Object.keys(state.attendanceRecords).forEach(dateKey => {
@@ -3006,22 +3124,33 @@ document.addEventListener('DOMContentLoaded', () => {
           const records = state.attendanceRecords[dateKey] || [];
           const rec = records.find(r => r.employeeId === emp.id);
           if (rec) {
-            totalLoggedDays++;
-            if (rec.status === 'Present') presentCount++;
-            else if (rec.status === 'Absent') absentCount++;
-            else otherCount++;
+            const isSunday = new Date(dateKey + 'T00:00:00').getDay() === 0;
+            if (isSunday) {
+              if (rec.status === 'Sunday Duty' || rec.status === 'Present') {
+                sundayDutyCount++;
+                presentCount++;
+              }
+              // Sundays (Sunday Off / Weekly Off) are excluded from the working days count!
+            } else {
+              // Working days (Monday through Saturday)
+              workingDaysLogged++;
+              if (rec.status === 'Present') presentCount++;
+              else if (rec.status === 'Absent') absentCount++;
+              else otherCount++;
+            }
           }
         }
       });
 
-      const rate = totalLoggedDays > 0 ? Math.round((presentCount / totalLoggedDays) * 100) : 0;
+      // Attendance rate is based on actual working days (Monday-Saturday)
+      const rate = workingDaysLogged > 0 ? Math.min(100, Math.round((presentCount / workingDaysLogged) * 100)) : (presentCount > 0 ? 100 : 0);
 
       const tr = document.createElement('tr');
       tr.innerHTML = `
         <td style="text-align:center; font-weight:700; color:#64748B;">${index + 1}</td>
         <td style="font-weight:700; color:#1E293B;">${emp.name}</td>
         <td style="color:#64748B;">${emp.role || 'Staff'}</td>
-        <td style="text-align:center; font-weight:700; color:#059669;">${presentCount} days</td>
+        <td style="text-align:center; font-weight:700; color:#059669;">${presentCount} days ${sundayDutyCount > 0 ? `<div style="color:#2563EB; font-size:10px; font-weight:600;">(${sundayDutyCount} Sun duty)</div>` : ''}</td>
         <td style="text-align:center; font-weight:700; color:#E11D48;">${absentCount} days</td>
         <td style="text-align:center; font-weight:600; color:#D97706;">${otherCount} days</td>
         <td style="text-align:center;">
@@ -3092,7 +3221,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const monthPicker = document.getElementById('attendanceMonthPicker');
     const selectedMonth = (monthPicker && monthPicker.value) || state.selectedAttendanceDate.slice(0, 7);
 
-    let csv = 'S.No,Employee Name,Role,Phone,Date,Status,Notes\n';
+    // UTF-8 BOM ensures Excel on Windows correctly detects UTF-8 without symbol corruption
+    let csv = '\uFEFF"S.No","Employee Name","Role","Phone","Date","Day","Status","Notes"\n';
     let rowIdx = 1;
 
     const dates = Object.keys(state.attendanceRecords)
@@ -3104,17 +3234,26 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
     dates.forEach(d => {
       const list = state.attendanceRecords[d] || [];
+      const dObj = new Date(d + 'T00:00:00');
+      const dayName = dayNames[dObj.getDay()] || '';
+      const displayDate = formatIsoDateToDisplay(d);
+
       list.forEach(rec => {
         const emp = state.employees.find(e => e.id === rec.employeeId);
         const name = (rec.employeeName || (emp ? emp.name : '')).replace(/"/g, '""');
-        const role = (emp ? emp.role || '' : '').replace(/"/g, '""');
-        const phone = (emp ? emp.phone || '' : '').replace(/"/g, '""');
-        const status = rec.status || 'Present';
-        const notes = (rec.notes || '').replace(/"/g, '""');
+        const role = (emp ? emp.role || 'Staff' : 'Staff').replace(/"/g, '""');
+        let rawPhone = (emp ? emp.phone || '' : '').replace(/"/g, '""');
+        // Use Excel formula syntax ="..." to preserve exact phone digits without scientific notation or formula errors
+        const phoneCell = rawPhone ? `="${rawPhone}"` : '=""';
+        const dateCell = `="${displayDate}"`;
+        const status = (rec.status || 'Present').replace(/"/g, '""');
+        const notes = (rec.notes || '').replace(/[\r\n]+/g, ' ').replace(/"/g, '""');
 
-        csv += `${rowIdx++},"${name}","${role}","${phone}",${d},"${status}","${notes}"\n`;
+        csv += `"${rowIdx++}","${name}","${role}",${phoneCell},${dateCell},"${dayName}","${status}","${notes}"\n`;
       });
     });
 
@@ -3123,9 +3262,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const link = document.createElement('a');
     link.href = url;
     link.download = `Attendance_${selectedMonth}.csv`;
+    document.body.appendChild(link);
     link.click();
+    document.body.removeChild(link);
     URL.revokeObjectURL(url);
-    showToast('Attendance CSV exported!', 'success');
+    showToast('Attendance CSV exported cleanly!', 'success');
   };
 
   const initAttendanceModule = () => {
@@ -3194,13 +3335,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (markAllBtn) {
       markAllBtn.addEventListener('click', async () => {
+        const isSunday = new Date(state.selectedAttendanceDate + 'T00:00:00').getDay() === 0;
+        const targetStatus = isSunday ? 'Sunday Off' : 'Present';
+        const targetNotes = isSunday ? 'Weekly Off' : '';
         const dailyRecords = ensureDailyAttendanceList(state.selectedAttendanceDate);
         dailyRecords.forEach(r => {
-          r.status = 'Present';
+          r.status = targetStatus;
+          if (isSunday && !r.notes) r.notes = targetNotes;
         });
         saveLocalData();
         renderAttendancePageView();
-        showToast('All staff marked Present for today! ✓', 'success');
+        showToast(isSunday ? 'Marked all staff as Sunday Weekly Off! 🏖️' : 'All staff marked Present for today! ✓', 'success');
         await cloudSaveAttendanceDay(state.selectedAttendanceDate, dailyRecords);
       });
     }
@@ -3282,7 +3427,7 @@ document.addEventListener('DOMContentLoaded', () => {
         saveLocalData();
         closeEmployeeModal();
         renderAttendancePageView();
-        
+
         const cloudOk = await cloudSaveEmployee(newEmp);
         if (cloudOk) {
           showToast(`Added ${newEmp.name} & synced to cloud! ☁️`, 'success');
