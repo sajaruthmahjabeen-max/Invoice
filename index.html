@@ -20,7 +20,7 @@
   <link rel="icon" type="image/svg+xml" href="icons/icon.svg">
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
 
-  <link rel="stylesheet" href="styles.css?v=2.6">
+  <link rel="stylesheet" href="styles.css?v=2.7">
   <!-- Client-side True PDF Generator (Local Offline) -->
   <script src="libs/html2pdf.bundle.min.js"></script>
 </head>
@@ -941,40 +941,95 @@
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#F43F5E" stroke-width="2.2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
             Sales Analytics &amp; Revenue Reports
           </h2>
-          <p>Financial summaries, top client analysis, and hospital ordering volumes.</p>
+          <p>Financial summaries, month-wise sales volume, top hospitals, and order values.</p>
+        </div>
+        <div class="table-toolbar">
+          <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+            <label for="salesReportMonthPicker" style="font-size: 12px; font-weight: 700; color: #475569;">Select Month:</label>
+            <input type="month" id="salesReportMonthPicker" class="attendance-date-input" style="padding: 6px 12px; font-weight: 700;">
+            <button type="button" class="btn-pill-reset" id="btnSalesReportAllTime" style="font-size: 11.5px; padding: 6px 12px;">All Time</button>
+          </div>
         </div>
       </div>
 
-      <section class="stats-grid">
+      <section class="stats-grid" style="margin-bottom: 24px;">
         <div class="stat-card orange">
           <div class="stat-info">
-            <span class="stat-label">This Month Sales</span>
+            <span class="stat-label" id="salesReportPeriodLabel">Month Sales</span>
             <span class="stat-value" id="salesReportMonthly">₹ 0.00</span>
             <span class="stat-trend" id="salesReportTrendSales">Calculated live</span>
           </div>
         </div>
         <div class="stat-card pink">
           <div class="stat-info">
-            <span class="stat-label">Total Invoices Generated</span>
+            <span class="stat-label">Invoices Generated</span>
             <span class="stat-value" id="salesReportInvoices">0 Invoices</span>
-            <span class="stat-trend" id="salesReportCollectionRate">100% Rate</span>
+            <span class="stat-trend" id="salesReportCollectionRate">0% Paid</span>
           </div>
         </div>
         <div class="stat-card purple">
           <div class="stat-info">
-            <span class="stat-label">Average Order Value</span>
+            <span class="stat-label">Average Order Value (AOV)</span>
             <span class="stat-value" id="salesReportAOV">₹ 0.00</span>
             <span class="stat-trend">Per invoice</span>
           </div>
         </div>
         <div class="stat-card teal">
           <div class="stat-info">
-            <span class="stat-label">Active Hospital Accounts</span>
+            <span class="stat-label">Billed Hospitals</span>
             <span class="stat-value" id="salesReportAccounts">0 Facilities</span>
-            <span class="stat-trend">Registered</span>
+            <span class="stat-trend">Active this period</span>
           </div>
         </div>
       </section>
+
+      <!-- Hospital-Wise Sales Breakdown Table -->
+      <div class="table-card" style="margin-bottom: 24px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+          <h3 class="table-card-title">Hospital-Wise Sales Breakdown</h3>
+          <span style="font-size: 12px; color: var(--text-muted);">Summary of orders &amp; revenue per facility</span>
+        </div>
+        <div class="data-table-container">
+          <table class="clean-table">
+            <thead>
+              <tr>
+                <th>Hospital / Clinic Name</th>
+                <th>Phone Number</th>
+                <th style="text-align: center;">Orders</th>
+                <th style="text-align: right;">Total Billed</th>
+                <th style="text-align: right;">Paid Amount</th>
+                <th style="text-align: right;">Pending Amount</th>
+                <th style="text-align: center;">Action</th>
+              </tr>
+            </thead>
+            <tbody id="salesReportHospitalTableBody">
+              <!-- Dynamically populated -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Invoices List Table for Selected Period -->
+      <div class="table-card">
+        <h3 class="table-card-title" style="margin-bottom: 14px;">Invoices in Selected Period</h3>
+        <div class="data-table-container">
+          <table class="clean-table">
+            <thead>
+              <tr>
+                <th>Invoice No.</th>
+                <th>Hospital / Clinic</th>
+                <th>Date</th>
+                <th style="text-align: right;">Amount</th>
+                <th style="text-align: center;">Status</th>
+                <th style="text-align: center;">Action</th>
+              </tr>
+            </thead>
+            <tbody id="salesReportInvoicesTableBody">
+              <!-- Dynamically populated -->
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
 
     <!-- ==================== VIEW 7: OUTSTANDING ==================== -->
@@ -985,19 +1040,70 @@
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#F97316" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 14 14"/></svg>
             Outstanding &amp; Unpaid Invoices
           </h2>
-          <p>Track all Unpaid hospital bills, total pending dues, and mark invoices as Paid.</p>
+          <p>Track all pending hospital balances, filter month-wise, and inspect order dates per hospital.</p>
+        </div>
+        <div class="table-toolbar">
+          <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+            <label for="outstandingMonthPicker" style="font-size: 12px; font-weight: 700; color: #475569;">Month:</label>
+            <input type="month" id="outstandingMonthPicker" class="attendance-date-input" style="padding: 6px 12px; font-weight: 700;">
+            <button type="button" class="btn-pill-reset" id="btnOutstandingAllMonths" style="font-size: 11.5px; padding: 6px 12px;">All Months</button>
+            <div class="search-box-pill" style="min-width: 220px;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <input type="text" id="searchOutstandingInput" placeholder="Search hospital / invoice...">
+            </div>
+          </div>
         </div>
       </div>
 
+      <!-- Outstanding Stats Summary Cards -->
+      <section class="stats-grid" style="margin-bottom: 24px;">
+        <div class="stat-card orange">
+          <div class="stat-info">
+            <span class="stat-label">Total Outstanding Dues</span>
+            <span class="stat-value" id="outstandingTotalPending" style="color: #E11D48;">₹ 0.00</span>
+            <span class="stat-trend" id="outstandingMonthLabel">All Unpaid Bills</span>
+          </div>
+        </div>
+        <div class="stat-card pink">
+          <div class="stat-info">
+            <span class="stat-label">Pending Invoices</span>
+            <span class="stat-value" id="outstandingCount">0 Bills</span>
+            <span class="stat-trend">Awaiting payment</span>
+          </div>
+        </div>
+        <div class="stat-card purple">
+          <div class="stat-info">
+            <span class="stat-label">Hospitals with Pending Dues</span>
+            <span class="stat-value" id="outstandingHospitalsCount">0 Hospitals</span>
+            <span class="stat-trend">Click hospital below to view dates</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Hospital-Wise Outstanding Breakdown (Click to Expand / View Order Dates) -->
+      <div class="table-card" style="margin-bottom: 24px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 8px;">
+          <div>
+            <h3 class="table-card-title" style="margin-bottom: 2px;">Hospital-Wise Outstanding Breakdown</h3>
+            <span style="font-size: 12px; color: var(--text-muted);">👉 <strong>Click any hospital</strong> to expand and view order dates, items, and pending amounts</span>
+          </div>
+        </div>
+        <div id="outstandingHospitalAccordionContainer" class="hospital-accordion-wrap">
+          <!-- Dynamically rendered hospital cards with collapsible order history -->
+        </div>
+      </div>
+
+      <!-- All Individual Unpaid Bills Table -->
       <div class="table-card">
-        <h3 class="table-card-title" style="margin-bottom: 14px;">Unpaid Hospital Bills List</h3>
+        <h3 class="table-card-title" style="margin-bottom: 14px;">All Unpaid Invoices Registry</h3>
         <div class="data-table-container">
           <table class="clean-table">
             <thead>
               <tr>
                 <th>Invoice No.</th>
                 <th>Clinic / Hospital</th>
-                <th>Date</th>
+                <th>Order Date</th>
+                <th>Items Summary</th>
                 <th style="text-align: right;">Pending Amount</th>
                 <th style="text-align: center;">Status</th>
                 <th style="text-align: center;">Quick Action</th>
@@ -1281,7 +1387,7 @@
 <!-- LOCAL OFFLINE SDKs & CONFIG -->
 <script src="libs/supabase.js"></script>
 <script src="env.js"></script>
-<script src="app.js?v=3.5"></script>
+<script src="app.js?v=3.6"></script>
 
 <!-- PWA SERVICE WORKER REGISTRATION & OFFLINE HANDLER -->
 <script>

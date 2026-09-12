@@ -498,7 +498,11 @@ document.addEventListener('DOMContentLoaded', () => {
     },
     employees: [],
     attendanceRecords: {},
-    selectedAttendanceDate: new Date().toISOString().split('T')[0]
+    selectedAttendanceDate: new Date().toISOString().split('T')[0],
+    salesReportMonth: new Date().toISOString().substring(0, 7),
+    outstandingMonth: '',
+    outstandingSearch: '',
+    expandedHospitalIds: []
   };
 
   const recalculateNextInvoiceNumber = () => {
@@ -793,25 +797,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (statTotalSales) statTotalSales.textContent = formatCurrency(totalSalesAmount);
     if (statPendingAmount) statPendingAmount.textContent = formatCurrency(pendingAmountVal);
 
-    // Sales Report View Dynamic Sync
-    const salesReportMonthly = document.getElementById('salesReportMonthly');
-    const salesReportInvoices = document.getElementById('salesReportInvoices');
-    const salesReportAOV = document.getElementById('salesReportAOV');
-    const salesReportAccounts = document.getElementById('salesReportAccounts');
-
-    if (salesReportMonthly) salesReportMonthly.textContent = formatCurrency(totalSalesAmount);
-    if (salesReportInvoices) salesReportInvoices.textContent = `${totalBillsCount} Invoices`;
-    if (salesReportAOV) {
-      const paidBills = state.recentBills.filter(b => b.status === 'Paid');
-      const aov = paidBills.length > 0 ? (totalSalesAmount / paidBills.length) : 0;
-      salesReportAOV.textContent = formatCurrency(aov);
-    }
-    if (salesReportAccounts) {
-      const activeClinicsCount = state.clinics.filter(c => c.totalOrders > 0).length;
-      salesReportAccounts.textContent = `${activeClinicsCount} Facilities`;
-    }
-
-    // Outstanding View Dynamic Sync
+    // Sales Report & Outstanding Dynamic Sync
+    renderSalesReportView();
     renderOutstandingTable();
   };
 
@@ -845,7 +832,7 @@ document.addEventListener('DOMContentLoaded', () => {
     } else if (viewId === 'view-products') {
       renderProductsTable();
     } else if (viewId === 'view-sales-report') {
-      updateStatsUI();
+      renderSalesReportView();
     } else if (viewId === 'view-outstanding') {
       renderOutstandingTable();
     } else if (viewId === 'view-settings') {
@@ -929,6 +916,41 @@ document.addEventListener('DOMContentLoaded', () => {
       return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
     }
     return dispStr;
+  };
+
+  const getBillYearMonth = (dateStr) => {
+    if (!dateStr) return '';
+    const str = String(dateStr).trim();
+    if (str.includes('/')) {
+      const parts = str.split('/');
+      if (parts.length === 3) {
+        return `${parts[2]}-${parts[1].padStart(2, '0')}`;
+      }
+    }
+    if (str.includes('-')) {
+      const parts = str.split('-');
+      if (parts.length === 3) {
+        if (parts[0].length === 4) return `${parts[0]}-${parts[1].padStart(2, '0')}`;
+        return `${parts[2]}-${parts[1].padStart(2, '0')}`;
+      }
+    }
+    return '';
+  };
+
+  const formatMonthName = (yearMonthStr) => {
+    if (!yearMonthStr) return 'All Time';
+    try {
+      const parts = yearMonthStr.split('-');
+      if (parts.length === 2) {
+        const year = parts[0];
+        const monthIndex = parseInt(parts[1], 10) - 1;
+        const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+        if (months[monthIndex]) {
+          return `${months[monthIndex]} ${year}`;
+        }
+      }
+    } catch (e) { }
+    return yearMonthStr;
   };
 
   // Sync Input Bill Date & Calendar Symbol Trigger
@@ -1481,53 +1503,342 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   };
 
-  // --- DEDICATED OUTSTANDING / UNPAID BILLS PAGE ---
-  const renderOutstandingTable = () => {
-    const tableBody = document.getElementById('outstandingTableBody');
-    if (!tableBody) return;
-    tableBody.innerHTML = '';
-
-    const unpaidBills = state.recentBills.filter(b => b.status === 'Unpaid');
-    const totalPending = unpaidBills.reduce((acc, curr) => acc + (curr.amount || 0), 0);
-
-    const pendingTotalEl = document.getElementById('outstandingTotalPending');
-    const countTotalEl = document.getElementById('outstandingCount');
-    if (pendingTotalEl) pendingTotalEl.textContent = formatCurrency(totalPending);
-    if (countTotalEl) countTotalEl.textContent = unpaidBills.length;
-
-    if (unpaidBills.length === 0) {
-      tableBody.innerHTML = `
-        <tr>
-          <td colspan="6" style="text-align: center; padding: 36px; color: #10B981;">
-            <div style="font-size: 24px; margin-bottom: 6px;">🎉</div>
-            <strong>All Bills Paid!</strong> No outstanding receivables.
-          </td>
-        </tr>
-      `;
-      return;
+  // --- SALES REPORT & REVENUE ANALYTICS MODULE ---
+  const renderSalesReportView = () => {
+    const monthPicker = document.getElementById('salesReportMonthPicker');
+    if (monthPicker && monthPicker.value !== state.salesReportMonth) {
+      monthPicker.value = state.salesReportMonth;
     }
 
-    unpaidBills.forEach(bill => {
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td style="font-weight: 700; color: #1E293B;">${bill.invoiceNo}</td>
-        <td style="font-weight: 700; color: #1E293B;">${bill.clinicName}</td>
-        <td>${bill.date}</td>
-        <td style="text-align: right; font-weight: 800; color: #E11D48;">${formatCurrency(bill.amount)}</td>
-        <td style="text-align: center;">
-          <span class="status-pill unpaid clickable" onclick="window.toggleBillStatus('${bill.invoiceNo}')" title="Click to mark as Paid">Unpaid</span>
-        </td>
-        <td style="text-align: center;">
-          <div class="action-icons-group" style="justify-content: center; gap: 8px;">
-            <button class="btn-pill-draft" onclick="window.toggleBillStatus('${bill.invoiceNo}')" style="padding: 4px 12px; font-size: 11.5px; font-weight: 700; color: #059669; border-color: #10B981;">✓ Mark Paid</button>
-            <button class="btn-action-icon delete" onclick="window.deleteBill('${bill.invoiceNo}')" title="Delete Invoice">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#EF4444" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-            </button>
-          </div>
-        </td>
-      `;
-      tableBody.appendChild(tr);
+    const selectedMonth = state.salesReportMonth || '';
+    const periodLabelEl = document.getElementById('salesReportPeriodLabel');
+    const salesReportMonthly = document.getElementById('salesReportMonthly');
+    const salesReportTrendSales = document.getElementById('salesReportTrendSales');
+    const salesReportInvoices = document.getElementById('salesReportInvoices');
+    const salesReportCollectionRate = document.getElementById('salesReportCollectionRate');
+    const salesReportAOV = document.getElementById('salesReportAOV');
+    const salesReportAccounts = document.getElementById('salesReportAccounts');
+    const hospitalTableBody = document.getElementById('salesReportHospitalTableBody');
+    const invoicesTableBody = document.getElementById('salesReportInvoicesTableBody');
+
+    // Filter bills by selected month (or all time if empty)
+    const filteredBills = (state.recentBills || []).filter(bill => {
+      if (!selectedMonth) return true;
+      return getBillYearMonth(bill.date) === selectedMonth;
     });
+
+    const totalSales = filteredBills.reduce((sum, b) => sum + (Number(b.amount) || 0), 0);
+    const paidBills = filteredBills.filter(b => b.status === 'Paid');
+    const paidSales = paidBills.reduce((sum, b) => sum + (Number(b.amount) || 0), 0);
+    const pendingSales = totalSales - paidSales;
+    const invoiceCount = filteredBills.length;
+    const aov = invoiceCount > 0 ? (totalSales / invoiceCount) : 0;
+    const collectionRate = totalSales > 0 ? Math.round((paidSales / totalSales) * 100) : 0;
+
+    const uniqueHospitals = new Set(filteredBills.map(b => b.clinicName || b.clinicId));
+    const activeHospitalsCount = uniqueHospitals.size;
+
+    if (periodLabelEl) {
+      periodLabelEl.textContent = selectedMonth ? `${formatMonthName(selectedMonth)} Sales` : 'All-Time Sales';
+    }
+    if (salesReportMonthly) salesReportMonthly.textContent = formatCurrency(totalSales);
+    if (salesReportTrendSales) {
+      salesReportTrendSales.textContent = paidSales > 0 ? `${formatCurrency(paidSales)} collected (${collectionRate}%)` : (totalSales > 0 ? `${formatCurrency(pendingSales)} pending` : 'No bills this period');
+    }
+    if (salesReportInvoices) salesReportInvoices.textContent = `${invoiceCount} Invoices`;
+    if (salesReportCollectionRate) salesReportCollectionRate.textContent = `${collectionRate}% Paid`;
+    if (salesReportAOV) salesReportAOV.textContent = formatCurrency(aov);
+    if (salesReportAccounts) salesReportAccounts.textContent = `${activeHospitalsCount} Facilities`;
+
+    // 1. Render Hospital-Wise Sales Breakdown Table
+    if (hospitalTableBody) {
+      hospitalTableBody.innerHTML = '';
+      if (filteredBills.length === 0) {
+        hospitalTableBody.innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 24px; color: #94A3B8;">No billing records found for ${formatMonthName(selectedMonth)}.</td></tr>`;
+      } else {
+        const hospitalMap = {};
+        filteredBills.forEach(b => {
+          const key = b.clinicName || 'Unknown Hospital';
+          if (!hospitalMap[key]) {
+            const clinicObj = state.clinics.find(c => c.name === key || c.id === b.clinicId);
+            hospitalMap[key] = {
+              name: key,
+              phone: clinicObj ? clinicObj.phone : '—',
+              id: clinicObj ? clinicObj.id : '',
+              orders: 0,
+              totalBilled: 0,
+              paidAmount: 0,
+              pendingAmount: 0
+            };
+          }
+          hospitalMap[key].orders += 1;
+          const amt = Number(b.amount) || 0;
+          hospitalMap[key].totalBilled += amt;
+          if (b.status === 'Paid') {
+            hospitalMap[key].paidAmount += amt;
+          } else {
+            hospitalMap[key].pendingAmount += amt;
+          }
+        });
+
+        Object.values(hospitalMap).sort((a, b) => b.totalBilled - a.totalBilled).forEach(h => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td style="font-weight: 700; color: #1E293B;">${h.name}</td>
+            <td style="color: #475569; font-weight: 600;">${h.phone}</td>
+            <td style="text-align: center; font-weight: 700;">${h.orders}</td>
+            <td style="text-align: right; font-weight: 800; color: #0F172A;">${formatCurrency(h.totalBilled)}</td>
+            <td style="text-align: right; font-weight: 700; color: #10B981;">${formatCurrency(h.paidAmount)}</td>
+            <td style="text-align: right; font-weight: 700; color: ${h.pendingAmount > 0 ? '#E11D48' : '#64748B'};">${formatCurrency(h.pendingAmount)}</td>
+            <td style="text-align: center;">
+              <button class="btn-action-icon" onclick="window.openClinicDetailsById('${h.id}')" title="View Invoices & Orders">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0284C7" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              </button>
+            </td>
+          `;
+          hospitalTableBody.appendChild(tr);
+        });
+      }
+    }
+
+    // 2. Render Invoices Table for this period
+    if (invoicesTableBody) {
+      invoicesTableBody.innerHTML = '';
+      if (filteredBills.length === 0) {
+        invoicesTableBody.innerHTML = `<tr><td colspan="6" style="text-align: center; padding: 24px; color: #94A3B8;">No invoices in ${formatMonthName(selectedMonth)}.</td></tr>`;
+      } else {
+        filteredBills.forEach(bill => {
+          const isPaid = bill.status === 'Paid';
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td style="font-weight: 700; color: #1E293B;">${bill.invoiceNo}</td>
+            <td style="font-weight: 600; color: #475569;">${bill.clinicName}</td>
+            <td style="color: #64748B;">${bill.date}</td>
+            <td style="text-align: right; font-weight: 700; color: #0F172A;">${formatCurrency(bill.amount)}</td>
+            <td style="text-align: center;">
+              <span class="status-pill ${isPaid ? 'paid' : 'unpaid'} clickable" onclick="window.toggleBillStatus('${bill.invoiceNo}')" title="Click to toggle Paid/Unpaid">
+                ${isPaid ? '✓ Paid' : '● Unpaid'}
+              </span>
+            </td>
+            <td style="text-align: center;">
+              <div class="action-icons-group" style="justify-content: center; gap: 4px;">
+                <button class="btn-action-icon" onclick="window.viewInvoiceDetail('${bill.invoiceNo}')" title="View & Edit">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                </button>
+                <button class="btn-action-icon" onclick="window.downloadInvoicePdf('${bill.invoiceNo}')" title="Download PDF">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                </button>
+              </div>
+            </td>
+          `;
+          invoicesTableBody.appendChild(tr);
+        });
+      }
+    }
+  };
+
+  // --- DEDICATED OUTSTANDING & UNPAID BILLS MODULE ---
+  window.toggleHospitalOutstanding = (hospitalKey) => {
+    const idx = state.expandedHospitalIds.indexOf(hospitalKey);
+    if (idx >= 0) {
+      state.expandedHospitalIds.splice(idx, 1);
+    } else {
+      state.expandedHospitalIds.push(hospitalKey);
+    }
+    renderOutstandingTable();
+  };
+
+  const renderOutstandingTable = () => {
+    const accordionContainer = document.getElementById('outstandingHospitalAccordionContainer');
+    const tableBody = document.getElementById('outstandingTableBody');
+    const monthPicker = document.getElementById('outstandingMonthPicker');
+    const pendingTotalEl = document.getElementById('outstandingTotalPending');
+    const countTotalEl = document.getElementById('outstandingCount');
+    const hospitalsCountEl = document.getElementById('outstandingHospitalsCount');
+    const monthLabelEl = document.getElementById('outstandingMonthLabel');
+
+    if (monthPicker && monthPicker.value !== state.outstandingMonth) {
+      monthPicker.value = state.outstandingMonth;
+    }
+
+    const selectedMonth = state.outstandingMonth || '';
+    const searchVal = (state.outstandingSearch || '').toLowerCase().trim();
+
+    // Filter all bills that are Unpaid
+    let unpaidBills = (state.recentBills || []).filter(b => b.status === 'Unpaid' || b.status !== 'Paid');
+
+    // Filter by Month if selected
+    if (selectedMonth) {
+      unpaidBills = unpaidBills.filter(b => getBillYearMonth(b.date) === selectedMonth);
+    }
+
+    // Filter by search query if any
+    if (searchVal) {
+      unpaidBills = unpaidBills.filter(b =>
+        (b.clinicName && b.clinicName.toLowerCase().includes(searchVal)) ||
+        (b.invoiceNo && b.invoiceNo.toLowerCase().includes(searchVal)) ||
+        (b.itemsSummary && b.itemsSummary.toLowerCase().includes(searchVal))
+      );
+    }
+
+    const totalPending = unpaidBills.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
+
+    // Group unpaid bills by hospital
+    const hospitalMap = {};
+    unpaidBills.forEach(b => {
+      const key = b.clinicName || 'Unknown Hospital';
+      if (!hospitalMap[key]) {
+        const clinicObj = state.clinics.find(c => c.name === key || c.id === b.clinicId);
+        hospitalMap[key] = {
+          key: key,
+          name: key,
+          phone: clinicObj ? clinicObj.phone : '—',
+          address: clinicObj ? clinicObj.address : '—',
+          id: clinicObj ? clinicObj.id : key,
+          bills: [],
+          totalDue: 0
+        };
+      }
+      hospitalMap[key].bills.push(b);
+      hospitalMap[key].totalDue += (Number(b.amount) || 0);
+    });
+
+    const hospitalList = Object.values(hospitalMap).sort((a, b) => b.totalDue - a.totalDue);
+
+    if (pendingTotalEl) pendingTotalEl.textContent = formatCurrency(totalPending);
+    if (countTotalEl) countTotalEl.textContent = `${unpaidBills.length} Bills`;
+    if (hospitalsCountEl) hospitalsCountEl.textContent = `${hospitalList.length} Hospitals`;
+    if (monthLabelEl) {
+      monthLabelEl.textContent = selectedMonth ? `${formatMonthName(selectedMonth)} Dues` : 'All Unpaid Bills';
+    }
+
+    // 1. Render Hospital-Wise Accordion / Breakdown Cards
+    if (accordionContainer) {
+      accordionContainer.innerHTML = '';
+      if (hospitalList.length === 0) {
+        accordionContainer.innerHTML = `
+          <div style="background: #FFFFFF; border: 1px dashed #CBD5E1; border-radius: var(--radius-lg); padding: 36px; text-align: center;">
+            <div style="font-size: 32px; margin-bottom: 8px;">🎉</div>
+            <h4 style="font-size: 15px; font-weight: 800; color: #10B981; margin-bottom: 4px;">No Outstanding Dues!</h4>
+            <p style="color: #64748B; font-size: 12.5px;">All hospital bills ${selectedMonth ? `for ${formatMonthName(selectedMonth)}` : ''} have been marked as Paid.</p>
+          </div>
+        `;
+      } else {
+        hospitalList.forEach(h => {
+          // If in expandedHospitalIds or if only 1 hospital exists, keep expanded
+          const isExpanded = state.expandedHospitalIds.includes(h.key) || (hospitalList.length === 1 && state.expandedHospitalIds.length === 0);
+          const card = document.createElement('div');
+          card.className = `hospital-outstanding-card ${isExpanded ? 'expanded' : ''}`;
+          card.innerHTML = `
+            <div class="hospital-card-header" onclick="window.toggleHospitalOutstanding('${h.key}')" title="Click to view all order dates and bills for ${h.name}">
+              <div class="hospital-card-left">
+                <div class="hospital-avatar-pill">🏥</div>
+                <div>
+                  <h4 class="hospital-name">${h.name}</h4>
+                  <div class="hospital-subtext">${h.phone !== '—' ? `📞 ${h.phone} &bull; ` : ''}${h.address}</div>
+                </div>
+              </div>
+              <div class="hospital-card-right">
+                <div class="hospital-stat-pill">
+                  <span class="order-count-badge">${h.bills.length} Orders Pending</span>
+                  <span class="hospital-total-due">${formatCurrency(h.totalDue)}</span>
+                </div>
+                <svg class="chevron-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+              </div>
+            </div>
+
+            <div class="hospital-orders-collapse">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; padding: 4px 2px;">
+                <span style="font-size: 12px; font-weight: 700; color: #475569;">
+                  Orders &amp; Dates for <strong>${h.name}</strong> (${h.bills.length} invoices):
+                </span>
+                <button class="btn-pill-generate" onclick="window.startBillForClinic('${h.id}')" style="padding: 4px 10px; font-size: 11px;">+ New Bill</button>
+              </div>
+              <div class="data-table-container">
+                <table class="clean-table sub-table">
+                  <thead>
+                    <tr>
+                      <th>Order Date</th>
+                      <th>Invoice No.</th>
+                      <th>Items Summary</th>
+                      <th style="text-align: right;">Bill Amount</th>
+                      <th style="text-align: center;">Status</th>
+                      <th style="text-align: center;">Quick Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${h.bills.map(bill => `
+                      <tr>
+                        <td style="font-weight: 700; color: #1E293B;">📅 ${bill.date}</td>
+                        <td style="font-weight: 700; color: #0284C7;">${bill.invoiceNo}</td>
+                        <td style="color: #64748B; font-size: 11.5px;">${bill.itemsSummary || '—'}</td>
+                        <td style="text-align: right; font-weight: 800; color: #E11D48;">${formatCurrency(bill.amount)}</td>
+                        <td style="text-align: center;">
+                          <span class="status-pill unpaid clickable" onclick="window.toggleBillStatus('${bill.invoiceNo}')" title="Click to mark Paid">Unpaid</span>
+                        </td>
+                        <td style="text-align: center;">
+                          <div class="action-icons-group" style="justify-content: center; gap: 6px;">
+                            <button class="btn-pill-draft" onclick="window.toggleBillStatus('${bill.invoiceNo}')" style="padding: 3px 10px; font-size: 11px; font-weight: 700; color: #059669; border-color: #10B981;">✓ Mark Paid</button>
+                            <button class="btn-action-icon" onclick="window.viewInvoiceDetail('${bill.invoiceNo}')" title="View & Edit">
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                            </button>
+                            <button class="btn-action-icon" onclick="window.downloadInvoicePdf('${bill.invoiceNo}')" title="Download PDF">
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    `).join('')}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          `;
+          accordionContainer.appendChild(card);
+        });
+      }
+    }
+
+    // 2. Render Flat Unpaid Invoices Table
+    if (tableBody) {
+      tableBody.innerHTML = '';
+      if (unpaidBills.length === 0) {
+        tableBody.innerHTML = `
+          <tr>
+            <td colspan="7" style="text-align: center; padding: 24px; color: #10B981;">
+              <strong>All Bills Paid!</strong> No pending invoices found.
+            </td>
+          </tr>
+        `;
+      } else {
+        unpaidBills.forEach(bill => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td style="font-weight: 700; color: #1E293B;">${bill.invoiceNo}</td>
+            <td style="font-weight: 700; color: #1E293B;">${bill.clinicName}</td>
+            <td style="font-weight: 600;">📅 ${bill.date}</td>
+            <td style="color: #64748B; font-size: 11.5px;">${bill.itemsSummary || '—'}</td>
+            <td style="text-align: right; font-weight: 800; color: #E11D48;">${formatCurrency(bill.amount)}</td>
+            <td style="text-align: center;">
+              <span class="status-pill unpaid clickable" onclick="window.toggleBillStatus('${bill.invoiceNo}')" title="Click to mark as Paid">Unpaid</span>
+            </td>
+            <td style="text-align: center;">
+              <div class="action-icons-group" style="justify-content: center; gap: 6px;">
+                <button class="btn-pill-draft" onclick="window.toggleBillStatus('${bill.invoiceNo}')" style="padding: 4px 10px; font-size: 11.5px; font-weight: 700; color: #059669; border-color: #10B981;">✓ Mark Paid</button>
+                <button class="btn-action-icon" onclick="window.viewInvoiceDetail('${bill.invoiceNo}')" title="View & Edit">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                </button>
+                <button class="btn-action-icon" onclick="window.downloadInvoicePdf('${bill.invoiceNo}')" title="Download PDF">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                </button>
+              </div>
+            </td>
+          </tr>
+        `;
+          tableBody.appendChild(tr);
+        });
+      }
+    }
   };
 
   // --- DEDICATED ALL BILLS PAGE ---
@@ -3028,6 +3339,50 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // Sales Report Month Filter Listeners
+  const salesReportMonthPicker = document.getElementById('salesReportMonthPicker');
+  if (salesReportMonthPicker) {
+    salesReportMonthPicker.addEventListener('change', (e) => {
+      state.salesReportMonth = e.target.value;
+      renderSalesReportView();
+    });
+  }
+
+  const btnSalesReportAllTime = document.getElementById('btnSalesReportAllTime');
+  if (btnSalesReportAllTime) {
+    btnSalesReportAllTime.addEventListener('click', () => {
+      state.salesReportMonth = '';
+      if (salesReportMonthPicker) salesReportMonthPicker.value = '';
+      renderSalesReportView();
+    });
+  }
+
+  // Outstanding Month & Search Filter Listeners
+  const outstandingMonthPicker = document.getElementById('outstandingMonthPicker');
+  if (outstandingMonthPicker) {
+    outstandingMonthPicker.addEventListener('change', (e) => {
+      state.outstandingMonth = e.target.value;
+      renderOutstandingTable();
+    });
+  }
+
+  const btnOutstandingAllMonths = document.getElementById('btnOutstandingAllMonths');
+  if (btnOutstandingAllMonths) {
+    btnOutstandingAllMonths.addEventListener('click', () => {
+      state.outstandingMonth = '';
+      if (outstandingMonthPicker) outstandingMonthPicker.value = '';
+      renderOutstandingTable();
+    });
+  }
+
+  const searchOutstandingInput = document.getElementById('searchOutstandingInput');
+  if (searchOutstandingInput) {
+    searchOutstandingInput.addEventListener('input', (e) => {
+      state.outstandingSearch = e.target.value;
+      renderOutstandingTable();
+    });
+  }
+
   /* ================================================================
      ATTENDANCE MODULE LOGIC
   ================================================================ */
@@ -3590,6 +3945,7 @@ document.addEventListener('DOMContentLoaded', () => {
   renderProductsTable();
   updateProductsCatalogUI();
   renderOutstandingTable();
+  renderSalesReportView();
   renderSettingsUI();
   updateStatsUI();
   recalculateNextInvoiceNumber();
