@@ -472,7 +472,11 @@
               <div class="clinic-profile-name" id="quickClinicName">No Clinic Selected</div>
               <div class="clinic-profile-addr" id="quickClinicAddress">Please select a clinic or hospital from the dropdown above</div>
             </div>
-            <div class="clinic-strip-action">
+            <div class="clinic-strip-action" style="display: flex; gap: 8px;">
+              <button type="button" class="btn-strip-edit" id="btnEditCurrentClinic" style="display: none;" title="Edit Selected Clinic">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                <span>Edit</span>
+              </button>
               <button type="button" class="btn-strip-view" id="btnViewClinicDetails">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
                 <span>View Details</span>
@@ -1264,12 +1268,13 @@
 <div class="modal-overlay" id="addClinicModal">
   <div class="modal-box">
     <div class="modal-header">
-      <h3>+ Add New Clinic / Hospital</h3>
+      <h3 id="addClinicModalTitle">+ Add New Clinic / Hospital</h3>
       <button class="btn-modal-close" id="btnCloseClinicModal">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
     </div>
     <form id="addClinicForm">
+      <input type="hidden" id="editClinicId" value="">
       <div class="modal-body">
         <div class="form-group">
           <label for="newClinicName">Clinic / Hospital Name *</label>
@@ -1290,7 +1295,7 @@
       </div>
       <div class="modal-footer">
         <button type="button" class="btn-pill-reset" id="btnCancelAddClinic">Cancel</button>
-        <button type="submit" class="btn-pill-generate">Save Clinic</button>
+        <button type="submit" class="btn-pill-generate" id="btnSubmitClinicModal">Save Clinic</button>
       </div>
     </form>
   </div>
@@ -1343,7 +1348,11 @@
       </button>
     </div>
     <div class="modal-body" id="detailsModalContent"></div>
-    <div class="modal-footer">
+    <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
+      <button type="button" class="btn-pill-reset" id="btnEditFromDetails" style="display: inline-flex; align-items: center; gap: 6px;">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        <span>Edit Clinic</span>
+      </button>
       <button type="button" class="btn-pill-generate" id="btnSelectFromDetails">Create Bill for this Clinic</button>
     </div>
   </div>

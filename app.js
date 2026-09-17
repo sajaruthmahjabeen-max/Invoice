@@ -883,6 +883,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const quickClinicAddress = document.getElementById('quickClinicAddress');
   const quickClinicPhone = document.getElementById('quickClinicPhone');
   const btnViewClinicDetails = document.getElementById('btnViewClinicDetails');
+  const btnEditCurrentClinic = document.getElementById('btnEditCurrentClinic');
   const billingItemsBody = document.getElementById('billingItemsBody');
   const btnAddItemRow = document.getElementById('btnAddItemRow');
   const formTotalDisplay = document.getElementById('formTotalDisplay');
@@ -1018,6 +1019,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (quickClinicAddress) quickClinicAddress.textContent = clinic.address;
       if (quickClinicPhone) quickClinicPhone.textContent = clinic.phone;
       if (btnViewClinicDetails) btnViewClinicDetails.style.display = 'inline-flex';
+      if (btnEditCurrentClinic) btnEditCurrentClinic.style.display = 'inline-flex';
 
       if (previewClinicName) previewClinicName.textContent = clinic.name;
       if (previewClinicAddress) previewClinicAddress.textContent = clinic.address;
@@ -1027,6 +1029,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (quickClinicAddress) quickClinicAddress.textContent = 'Please select a clinic or hospital from the dropdown above';
       if (quickClinicPhone) quickClinicPhone.textContent = 'Phone: —';
       if (btnViewClinicDetails) btnViewClinicDetails.style.display = 'none';
+      if (btnEditCurrentClinic) btnEditCurrentClinic.style.display = 'none';
 
       if (previewClinicName) previewClinicName.textContent = 'Select Clinic / Hospital';
       if (previewClinicAddress) previewClinicAddress.textContent = 'Address will appear here upon selection';
@@ -1440,9 +1443,12 @@ document.addEventListener('DOMContentLoaded', () => {
             <td style="text-align: center; font-weight: 700;">${clinic.totalOrders}</td>
             <td style="text-align: right; font-weight: 800; color: #E11D48;">${formatCurrency(clinic.totalBilled)}</td>
             <td style="text-align: center;">
-              <div class="action-icons-group" style="justify-content: center;">
+              <div class="action-icons-group" style="justify-content: center; gap: 6px;">
                 <button class="btn-pill-draft" onclick="window.startBillForClinic('${clinic.id}')" style="padding: 4px 10px; font-size: 11px;">Bill Now</button>
-                <button class="btn-action-icon delete" onclick="window.deleteClinic('${clinic.id}')">
+                <button class="btn-action-icon" onclick="window.openClinicEdit('${clinic.id}')" title="Edit Clinic Details">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                </button>
+                <button class="btn-action-icon delete" onclick="window.deleteClinic('${clinic.id}')" title="Delete Clinic">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#EF4444" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                 </button>
               </div>
@@ -2340,6 +2346,33 @@ document.addEventListener('DOMContentLoaded', () => {
     switchView('view-create-bill');
   };
 
+  window.openClinicEdit = (clinicId) => {
+    const clinic = state.clinics.find(c => c.id === clinicId);
+    if (!clinic) return;
+
+    const modal = document.getElementById('addClinicModal');
+    const modalTitle = document.getElementById('addClinicModalTitle');
+    const submitBtn = document.getElementById('btnSubmitClinicModal');
+    const editIdInput = document.getElementById('editClinicId');
+    const nameInput = document.getElementById('newClinicName');
+    const personInput = document.getElementById('newClinicPerson');
+    const phoneInput = document.getElementById('newClinicPhone');
+    const addressInput = document.getElementById('newClinicAddress');
+
+    if (modalTitle) modalTitle.textContent = '✏️ Edit Clinic / Hospital';
+    if (submitBtn) submitBtn.textContent = 'Update Clinic';
+    if (editIdInput) editIdInput.value = clinic.id;
+    if (nameInput) nameInput.value = clinic.name || '';
+    if (personInput) personInput.value = clinic.contactPerson || '';
+    if (phoneInput) phoneInput.value = clinic.phone || '';
+    if (addressInput) addressInput.value = clinic.address || '';
+
+    if (modal) {
+      modal.classList.add('active');
+      if (nameInput) setTimeout(() => nameInput.focus(), 50);
+    }
+  };
+
   window.deleteClinic = async (clinicId) => {
     if (!confirm('Are you sure you want to remove this clinic facility?')) return;
     state.clinics = state.clinics.filter(c => c.id !== clinicId);
@@ -2547,6 +2580,30 @@ document.addEventListener('DOMContentLoaded', () => {
       return true;
     } catch (err) {
       console.error('Cloud save clinic error:', err);
+      return false;
+    }
+  };
+
+  const cloudUpdateClinic = async (clinic) => {
+    try {
+      if (!clinic || !clinic.id) return false;
+      const clinicId = clinic.id;
+      const payload = {
+        name: clinic.name,
+        contact_person: clinic.contactPerson || '',
+        phone: clinic.phone || '',
+        address: clinic.address || '',
+        total_billed: parseFloat(clinic.totalBilled) || 0
+      };
+
+      if (clinicId && clinicId.length === 36) {
+        await cloudDb.update('clinics', payload, `id=eq.${clinicId}`);
+      } else {
+        await cloudSaveClinic(clinic);
+      }
+      return true;
+    } catch (err) {
+      console.error('Cloud update clinic error:', err);
       return false;
     }
   };
@@ -2950,8 +3007,15 @@ document.addEventListener('DOMContentLoaded', () => {
     if (detailsModalContent) {
       detailsModalContent.innerHTML = `
         <div style="background:#FFF8F9; padding:14px; border-radius:10px; border:1px solid #FFE4E6; margin-bottom: 14px;">
-          <h4 style="font-size:14px; font-weight:800; color:#1E293B;">${clinic.name}</h4>
-          <p style="color:#64748B; font-size:12px; margin:4px 0 8px;">${clinic.address}</p>
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
+            <div>
+              <h4 style="font-size:14px; font-weight:800; color:#1E293B;">${clinic.name}</h4>
+              <p style="color:#64748B; font-size:12px; margin:4px 0 8px;">${clinic.address}</p>
+            </div>
+            <button class="btn-action-icon" onclick="document.getElementById('clinicDetailsModal').classList.remove('active'); window.openClinicEdit('${clinic.id}');" title="Edit Clinic Details" style="background: white; border: 1px solid #FFE4E6; flex-shrink: 0;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            </button>
+          </div>
           <div style="font-size:12px; color:#E11D48; font-weight:700;">Phone: ${clinic.phone}</div>
           <div style="font-size:12px; color:#475569; margin-top:4px;">Contact: ${clinic.contactPerson || 'Admin'}</div>
           <div style="font-size:12px; color:#10B981; font-weight:700; margin-top:8px;">
@@ -3009,6 +3073,13 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
       `;
     }
+    const btnEditFromDetails = document.getElementById('btnEditFromDetails');
+    if (btnEditFromDetails) {
+      btnEditFromDetails.onclick = () => {
+        if (clinicDetailsModal) clinicDetailsModal.classList.remove('active');
+        window.openClinicEdit(clinic.id);
+      };
+    }
     if (btnSelectFromDetails) {
       btnSelectFromDetails.onclick = () => {
         state.selectedClinicId = clinic.id;
@@ -3028,12 +3099,28 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  const resetClinicModalState = () => {
+    const form = document.getElementById('addClinicForm');
+    if (form) form.reset();
+    const editIdInput = document.getElementById('editClinicId');
+    if (editIdInput) editIdInput.value = '';
+    const modalTitle = document.getElementById('addClinicModalTitle');
+    if (modalTitle) modalTitle.textContent = '+ Add New Clinic / Hospital';
+    const submitBtn = document.getElementById('btnSubmitClinicModal');
+    if (submitBtn) submitBtn.textContent = 'Save Clinic';
+  };
+
   ['btnOpenAddClinic', 'btnOpenAddClinicPage'].forEach(id => {
     const btn = document.getElementById(id);
     if (btn) {
       btn.addEventListener('click', () => {
+        resetClinicModalState();
         const modal = document.getElementById('addClinicModal');
-        if (modal) modal.classList.add('active');
+        if (modal) {
+          modal.classList.add('active');
+          const firstInput = document.getElementById('newClinicName');
+          if (firstInput) setTimeout(() => firstInput.focus(), 50);
+        }
       });
     }
   });
@@ -3042,6 +3129,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const btn = document.getElementById(id);
     if (btn) {
       btn.addEventListener('click', () => {
+        resetClinicModalState();
         const modal = document.getElementById('addClinicModal');
         if (modal) modal.classList.remove('active');
       });
@@ -3052,6 +3140,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (addClinicForm) {
     addClinicForm.addEventListener('submit', async (e) => {
       e.preventDefault();
+      const editId = (document.getElementById('editClinicId') ? document.getElementById('editClinicId').value : '').trim();
       const name = document.getElementById('newClinicName').value.trim();
       const contactPerson = document.getElementById('newClinicPerson').value.trim();
       const phone = document.getElementById('newClinicPhone').value.trim();
@@ -3062,6 +3151,44 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
 
+      if (editId) {
+        // Edit Mode: Update existing clinic
+        const clinic = state.clinics.find(c => c.id === editId);
+        if (clinic) {
+          const oldName = clinic.name;
+          clinic.name = name;
+          clinic.contactPerson = contactPerson;
+          clinic.phone = phone;
+          clinic.address = address;
+
+          // If clinic name changed, update bill references
+          if (oldName !== name) {
+            (state.recentBills || []).forEach(b => {
+              if (b.clinicId === editId || b.clinicName === oldName) {
+                b.clinicName = name;
+                b.clinicAddress = address;
+                b.clinicPhone = phone;
+              }
+            });
+            renderRecentBillsTable();
+            renderAllBillsPageView();
+          }
+
+          saveLocalData();
+          renderClinicSelect();
+          renderClinicsPageView();
+          updateStatsUI();
+          cloudUpdateClinic(clinic);
+
+          resetClinicModalState();
+          const modal = document.getElementById('addClinicModal');
+          if (modal) modal.classList.remove('active');
+          showToast(`Clinic "${name}" updated successfully!`, 'success');
+          return;
+        }
+      }
+
+      // Add Mode: Create new clinic
       const newClinic = {
         id: generateUUID(),
         name,
@@ -3080,7 +3207,7 @@ document.addEventListener('DOMContentLoaded', () => {
       updateStatsUI();
       cloudSaveClinic(newClinic);
 
-      addClinicForm.reset();
+      resetClinicModalState();
       const modal = document.getElementById('addClinicModal');
       if (modal) modal.classList.remove('active');
       showToast(`Clinic "${name}" added successfully!`, 'success');
@@ -3130,6 +3257,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (modal) {
       modal.addEventListener('click', (e) => {
         if (e.target === modal) {
+          if (id === 'addClinicModal') resetClinicModalState();
           if (id === 'addProductModal') resetProductModalState();
           modal.classList.remove('active');
         }
@@ -3293,6 +3421,14 @@ document.addEventListener('DOMContentLoaded', () => {
     btnViewClinicDetails.addEventListener('click', () => {
       const clinic = state.clinics.find(c => c.id === state.selectedClinicId);
       if (clinic) openClinicDetails(clinic);
+    });
+  }
+
+  if (btnEditCurrentClinic) {
+    btnEditCurrentClinic.addEventListener('click', () => {
+      if (state.selectedClinicId) {
+        window.openClinicEdit(state.selectedClinicId);
+      }
     });
   }
 

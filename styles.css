@@ -742,6 +742,7 @@ select.form-control {
 }
 
 .btn-strip-view,
+.btn-strip-edit,
 .btn-view-details-pill {
   padding: 6px 14px;
   border-radius: var(--radius-full);
@@ -763,6 +764,7 @@ select.form-control {
 }
 
 .btn-strip-view:hover,
+.btn-strip-edit:hover,
 .btn-view-details-pill:hover {
   background: #FFE4E6;
   border-color: #E11D48;
