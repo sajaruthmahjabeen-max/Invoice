@@ -1,11 +1,12 @@
 -- ========================================================
 -- IMPORTANT 1-CLICK MIGRATION: RUN THIS IN SUPABASE SQL EDITOR
 -- Dashboard: https://supabase.com/dashboard/project/qhuhngicocldbcmbegfg/sql/new
--- Unlocks 4-decimal precision for rates (0.536, 0.078, etc.) without PostgreSQL rounding:
+-- Unlocks 4-decimal precision & size-level stock inventory:
 -- ========================================================
 ALTER TABLE products ALTER COLUMN rate TYPE NUMERIC(12, 4);
 ALTER TABLE bills ALTER COLUMN subtotal TYPE NUMERIC(12, 4);
 ALTER TABLE bills ALTER COLUMN total_amount TYPE NUMERIC(12, 4);
+ALTER TABLE products ADD COLUMN IF NOT EXISTS stocks JSONB DEFAULT '{}'::jsonb;
 -- ========================================================
 
 -- ===================================================
@@ -51,10 +52,12 @@ CREATE TABLE IF NOT EXISTS products (
   sizes TEXT NOT NULL,
   spec TEXT,
   rate NUMERIC(12, 4) NOT NULL DEFAULT 0.00,
+  stocks JSONB DEFAULT '{}'::jsonb,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 -- If table already exists, run:
 -- ALTER TABLE products ALTER COLUMN rate TYPE NUMERIC(12, 4);
+-- ALTER TABLE products ADD COLUMN IF NOT EXISTS stocks JSONB DEFAULT '{}'::jsonb;
 
 -- 5. COMPANY PROFILE & SETTINGS TABLE
 CREATE TABLE IF NOT EXISTS company_settings (

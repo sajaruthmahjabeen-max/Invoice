@@ -787,6 +787,7 @@
               <tr>
                 <th>Product / Cover Line</th>
                 <th>Available Sizes</th>
+                <th style="text-align: center;">Stock by Size</th>
                 <th>Material Specification</th>
                 <th style="text-align: right;">Standard Rate (₹)</th>
                 <th style="text-align: center;">Status</th>
@@ -1320,6 +1321,15 @@
         <div class="form-group">
           <label for="newProductSizes">Available Sizes *</label>
           <input type="text" id="newProductSizes" class="form-control" placeholder="e.g. Small, Medium, Large" required>
+        </div>
+        <div class="form-group" id="productStockSection" style="background: #F8FAFC; border: 1.5px solid #E2E8F0; border-radius: 8px; padding: 12px; margin-bottom: 14px;">
+          <label style="display: flex; justify-content: space-between; align-items: center; font-size: 12px; font-weight: 700; color: #1E293B; margin-bottom: 8px;">
+            <span>📦 Initial Stock by Size</span>
+            <span style="font-size: 11px; color: #64748B; font-weight: normal;">Units in inventory</span>
+          </label>
+          <div id="productStockInputsContainer" class="stock-inputs-grid">
+            <div style="font-size: 11.5px; color: #94A3B8; font-style: italic;">Enter sizes above separated by commas to set stock levels.</div>
+          </div>
         </div>
         <div class="form-group">
           <label for="newProductSpec">Material Specification</label>

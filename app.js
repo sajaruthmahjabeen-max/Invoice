@@ -1062,8 +1062,15 @@ document.addEventListener('DOMContentLoaded', () => {
           tr.innerHTML = `
             <td style="text-align: center; color: #64748B;">${index + 1}</td>
             <td><input type="text" list="productsDatalist" class="item-name-input" data-id="${item.id}" value="${item.name}" placeholder="Type or pick product..." style="width: 100%;" autocomplete="off"></td>
-            <td><input type="text" class="item-size-input" data-id="${item.id}" value="${item.size || ''}" placeholder="e.g. Med / 30x40" style="width: 100%;"></td>
-            <td style="text-align: center;"><input type="number" class="input-qty" data-id="${item.id}" value="${item.qty}" style="width: 100%; text-align: center;" min="1"></td>
+            <td>
+              <input type="text" list="sizesList_${item.id}" class="item-size-input" data-id="${item.id}" value="${item.size || ''}" placeholder="e.g. Med / 30x40" style="width: 100%;">
+              <datalist id="sizesList_${item.id}"></datalist>
+              <div class="item-stock-hint" data-id="${item.id}"></div>
+            </td>
+            <td style="text-align: center;">
+              <input type="number" class="input-qty" data-id="${item.id}" value="${item.qty}" style="width: 100%; text-align: center;" min="1">
+              <div class="stock-warning-badge" data-id="${item.id}"></div>
+            </td>
             <td style="text-align: right;"><input type="number" class="input-rate" data-id="${item.id}" value="${item.rate ? item.rate : ''}" placeholder="0.00" style="width: 100%; text-align: right;" step="any" min="0"></td>
             <td class="item-amount-cell" style="text-align: right; font-weight: 700; color: #1E293B;">${formatRate(rowAmount)}</td>
             <td style="text-align: center;">
@@ -1095,6 +1102,61 @@ document.addEventListener('DOMContentLoaded', () => {
     if (previewTotalDisplay) previewTotalDisplay.textContent = formattedTotal;
 
     attachItemEvents();
+
+    // Initial sync of stock indicator for each row
+    document.querySelectorAll('#billingItemsBody tr').forEach(row => {
+      const rowId = Number(row.dataset.id);
+      const item = state.items.find(i => i.id === rowId);
+      if (item) updateItemRowStockInfo(row, item);
+    });
+  };
+
+  const updateItemRowStockInfo = (row, item) => {
+    if (!row || !item) return;
+    const matchedProd = state.products.find(p => p.name.trim().toLowerCase() === (item.name || '').trim().toLowerCase());
+    const sizeDatalist = row.querySelector(`#sizesList_${item.id}`);
+    const stockHint = row.querySelector(`.item-stock-hint[data-id="${item.id}"]`);
+    const stockWarn = row.querySelector(`.stock-warning-badge[data-id="${item.id}"]`);
+
+    if (matchedProd) {
+      const stocks = matchedProd.stocks || {};
+      const sizeList = (matchedProd.sizes || '').split(',').map(s => s.trim()).filter(Boolean);
+      if (sizeDatalist) {
+        sizeDatalist.innerHTML = sizeList.map(sz => {
+          const qty = stocks[sz] !== undefined ? stocks[sz] : 0;
+          return `<option value="${sz}">${sz} (In Stock: ${qty})</option>`;
+        }).join('');
+      }
+
+      // Check stock for current item.size
+      let currentSizeKey = Object.keys(stocks).find(s => s.trim().toLowerCase() === (item.size || '').trim().toLowerCase());
+      if (!currentSizeKey && sizeList.length > 0) {
+        currentSizeKey = sizeList.find(s => s.trim().toLowerCase() === (item.size || '').trim().toLowerCase());
+      }
+      const availableQty = (currentSizeKey && stocks[currentSizeKey] !== undefined)
+        ? Number(stocks[currentSizeKey])
+        : (stocks[item.size] !== undefined ? Number(stocks[item.size]) : null);
+
+      if (stockHint) {
+        if (availableQty !== null) {
+          stockHint.innerHTML = `<span style="color: ${availableQty > 0 ? '#059669' : '#DC2626'}; font-weight: 700;">In Stock: ${availableQty}</span>`;
+        } else {
+          stockHint.innerHTML = '';
+        }
+      }
+
+      if (stockWarn) {
+        if (availableQty !== null && Number(item.qty || 0) > availableQty) {
+          stockWarn.textContent = `⚠️ Only ${availableQty} in stock!`;
+        } else {
+          stockWarn.textContent = '';
+        }
+      }
+    } else {
+      if (sizeDatalist) sizeDatalist.innerHTML = '';
+      if (stockHint) stockHint.innerHTML = '';
+      if (stockWarn) stockWarn.textContent = '';
+    }
   };
 
   const updateTotalsWithoutRerender = () => {
@@ -1119,6 +1181,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Try exact/case-insensitive match with pre-saved products catalog
         const matchedProd = state.products.find(p => p.name.trim().toLowerCase() === typedVal.trim().toLowerCase());
+        const row = e.target.closest('tr');
         if (matchedProd) {
           let defaultSize = 'Standard';
           if (matchedProd.sizes) {
@@ -1128,7 +1191,6 @@ document.addEventListener('DOMContentLoaded', () => {
           item.size = defaultSize;
           item.rate = Number(matchedProd.rate || 0);
 
-          const row = e.target.closest('tr');
           if (row) {
             const sizeInp = row.querySelector('.item-size-input');
             const rateInp = row.querySelector('.input-rate');
@@ -1145,10 +1207,12 @@ document.addEventListener('DOMContentLoaded', () => {
               }, 40);
             }
           }
+          if (row) updateItemRowStockInfo(row, item);
           updateTotalsWithoutRerender();
           updatePreviewItemsOnly();
           showToast(`Selected "${matchedProd.name}" — ₹${matchedProd.rate}`, 'normal');
         } else {
+          if (row) updateItemRowStockInfo(row, item);
           updatePreviewItemsOnly();
         }
       };
@@ -1163,6 +1227,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const item = state.items.find(i => i.id === id);
         if (item) {
           item.size = e.target.value;
+          const row = e.target.closest('tr');
+          if (row) updateItemRowStockInfo(row, item);
           updatePreviewItemsOnly();
         }
       });
@@ -1178,6 +1244,7 @@ document.addEventListener('DOMContentLoaded', () => {
           if (row) {
             const amountCell = row.querySelector('.item-amount-cell');
             if (amountCell) amountCell.textContent = formatRate(item.qty * (item.rate || 0));
+            updateItemRowStockInfo(row, item);
           }
           updateTotalsWithoutRerender();
           updatePreviewItemsOnly();
@@ -1324,11 +1391,35 @@ document.addEventListener('DOMContentLoaded', () => {
         clinic.totalBilled = (clinic.totalBilled || 0) + total;
       }
 
+      // Automatically deduct billed quantities from product stock per size
+      const stockUpdatedProducts = [];
+      validItems.forEach(item => {
+        const prod = state.products.find(p => p.name.trim().toLowerCase() === (item.name || '').trim().toLowerCase());
+        if (prod) {
+          if (!prod.stocks) prod.stocks = {};
+          const sizeList = (prod.sizes || '').split(',').map(s => s.trim()).filter(Boolean);
+          let sizeKey = Object.keys(prod.stocks).find(s => s.trim().toLowerCase() === (item.size || '').trim().toLowerCase());
+          if (!sizeKey) {
+            sizeKey = sizeList.find(s => s.trim().toLowerCase() === (item.size || '').trim().toLowerCase()) || (sizeList.length > 0 ? sizeList[0] : (item.size || 'Standard'));
+          }
+          const currentStock = prod.stocks[sizeKey] !== undefined ? Number(prod.stocks[sizeKey]) : 0;
+          prod.stocks[sizeKey] = Math.max(0, currentStock - Number(item.qty || 0));
+          if (!stockUpdatedProducts.includes(prod)) stockUpdatedProducts.push(prod);
+        }
+      });
+
+      // Async sync updated stock to cloud
+      stockUpdatedProducts.forEach(prod => {
+        cloudUpdateProduct(prod);
+      });
+
       saveLocalData();
       updateStatsUI();
       renderRecentBillsTable();
       renderAllBillsPageView();
       renderClinicsPageView();
+      renderProductsTable();
+      updateProductsCatalogUI();
 
       // Advance invoice counter for subsequent bill
       recalculateNextInvoiceNumber();
@@ -2403,6 +2494,30 @@ document.addEventListener('DOMContentLoaded', () => {
       c.totalBilled = cBills.reduce((sum, b) => sum + (Number(b.amount) || 0), 0);
     });
 
+    // Restore stock for all items in the deleted bill
+    if (Array.isArray(billToDelete.itemsSnapshot)) {
+      const stockRestoredProducts = [];
+      billToDelete.itemsSnapshot.forEach(item => {
+        const prod = state.products.find(p => p.name.trim().toLowerCase() === (item.name || '').trim().toLowerCase());
+        if (prod) {
+          if (!prod.stocks) prod.stocks = {};
+          const sizeList = (prod.sizes || '').split(',').map(s => s.trim()).filter(Boolean);
+          let sizeKey = Object.keys(prod.stocks).find(s => s.trim().toLowerCase() === (item.size || '').trim().toLowerCase());
+          if (!sizeKey) {
+            sizeKey = sizeList.find(s => s.trim().toLowerCase() === (item.size || '').trim().toLowerCase()) || (sizeList.length > 0 ? sizeList[0] : (item.size || 'Standard'));
+          }
+          const currentStock = prod.stocks[sizeKey] !== undefined ? Number(prod.stocks[sizeKey]) : 0;
+          prod.stocks[sizeKey] = currentStock + Number(item.qty || 0);
+          if (!stockRestoredProducts.includes(prod)) stockRestoredProducts.push(prod);
+        }
+      });
+      stockRestoredProducts.forEach(prod => {
+        cloudUpdateProduct(prod);
+      });
+      renderProductsTable();
+      updateProductsCatalogUI();
+    }
+
     // Save and instantly update dashboard stat cards and tables
     saveLocalData();
     updateStatsUI();
@@ -2422,20 +2537,46 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!tableBody) return;
     tableBody.innerHTML = '';
     if (state.products.length === 0) {
-      tableBody.innerHTML = `<tr><td colspan="6" style="text-align: center; padding: 28px; color: #94A3B8;">
+      tableBody.innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 28px; color: #94A3B8;">
         <div style="font-size: 13.5px; margin-bottom: 10px;">No products found in catalog.</div>
         <button type="button" class="btn-add-clinic-pill" style="display: inline-flex; margin: 0 auto; font-size: 12px; padding: 6px 14px;" onclick="document.getElementById('addProductModal').classList.add('active')">+ Add First Product</button>
       </td></tr>`;
       return;
     }
     state.products.forEach(p => {
+      const stocks = p.stocks || {};
+      const sizeList = (p.sizes || '').split(',').map(s => s.trim()).filter(Boolean);
+      let totalPcs = 0;
+      const stockBadges = sizeList.map(sz => {
+        const qty = stocks[sz] !== undefined ? Number(stocks[sz]) : 0;
+        totalPcs += qty;
+        let badgeClass = 'stock-chip';
+        if (qty === 0) badgeClass += ' zero';
+        else if (qty <= 5) badgeClass += ' low';
+        return `<span class="${badgeClass}"><strong>${sz}:</strong> ${qty}</span>`;
+      });
+
+      // Status pill based on total inventory
+      let statusBadge = '<span class="status-pill paid">In Stock</span>';
+      if (totalPcs === 0) {
+        statusBadge = '<span class="status-pill unpaid" style="background:#FEF2F2; color:#DC2626; border-color:#FECACA;">Out of Stock</span>';
+      } else if (totalPcs <= 5) {
+        statusBadge = '<span class="status-pill unpaid" style="background:#FFFBEB; color:#D97706; border-color:#FDE68A;">Low Stock</span>';
+      }
+
       const tr = document.createElement('tr');
       tr.innerHTML = `
         <td style="font-weight: 700; color: #1E293B;">${p.name}</td>
         <td style="color: #64748B;">${p.sizes || '—'}</td>
+        <td style="text-align: center;">
+          ${stockBadges.length > 0 ? `
+            <div class="stock-chip-group">${stockBadges.join('')}</div>
+            <div class="stock-total-badge">${totalPcs} pcs total</div>
+          ` : '<span style="color:#94A3B8; font-size:11px;">0 pcs</span>'}
+        </td>
         <td style="color: #475569; font-size: 11.5px;">${p.spec || '—'}</td>
         <td style="text-align: right; font-weight: 700; color: #E11D48;">${formatCurrency(p.rate)}</td>
-        <td style="text-align: center;"><span class="status-pill paid">Active</span></td>
+        <td style="text-align: center;">${statusBadge}</td>
         <td style="text-align: center;">
           <div class="action-icons-group" style="justify-content: center; gap: 6px;">
             <button class="btn-action-icon edit" onclick="window.openProductEditModal('${p.id}')" title="Edit Product">
@@ -2472,6 +2613,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (specInput) specInput.value = prod.spec || '';
     if (rateInput) rateInput.value = prod.rate !== undefined ? prod.rate : '';
 
+    renderProductStockInputs(prod.sizes || '', prod.stocks || {});
+
     if (modal) {
       modal.classList.add('active');
       if (nameInput) setTimeout(() => nameInput.focus(), 50);
@@ -2493,8 +2636,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const datalist = document.getElementById('productsDatalist');
     if (datalist) {
       datalist.innerHTML = state.products.map(p => {
+        const stocks = p.stocks || {};
+        const totalStock = Object.values(stocks).reduce((a, b) => a + Number(b || 0), 0);
         const sizeInfo = p.sizes ? ` (${p.sizes})` : '';
-        return `<option value="${p.name}">₹${formatCompactRate(p.rate)}${sizeInfo}</option>`;
+        return `<option value="${p.name}">₹${formatCompactRate(p.rate)}${sizeInfo} [${totalStock} in stock]</option>`;
       }).join('');
     }
 
@@ -2507,13 +2652,18 @@ document.addEventListener('DOMContentLoaded', () => {
         pillsContainer.innerHTML = '';
       } else {
         if (barContainer) barContainer.style.display = 'flex';
-        pillsContainer.innerHTML = state.products.map(p => `
-          <button type="button" class="product-chip-btn" onclick="window.addCatalogProductToBill('${p.id}')" title="Click to add ${p.name} to bill">
+        pillsContainer.innerHTML = state.products.map(p => {
+          const stocks = p.stocks || {};
+          const totalStock = Object.values(stocks).reduce((a, b) => a + Number(b || 0), 0);
+          return `
+          <button type="button" class="product-chip-btn" onclick="window.addCatalogProductToBill('${p.id}')" title="Click to add ${p.name} to bill (${totalStock} in stock)">
             <span class="chip-icon">+</span>
             <span>${p.name}</span>
             <span class="chip-rate">₹${formatCompactRate(p.rate)}</span>
+            <span style="font-size: 10px; color: ${totalStock > 0 ? '#059669' : '#DC2626'}; font-weight: 700;">(${totalStock} left)</span>
           </button>
-        `).join('');
+        `;
+        }).join('');
       }
     }
   };
@@ -2657,13 +2807,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const cloudSaveProduct = async (product) => {
     try {
-      await cloudDb.insert('products', [{
+      const payload = {
         id: product.id,
         name: product.name,
         sizes: product.sizes,
         spec: product.spec,
-        rate: product.rate
-      }]);
+        rate: product.rate,
+        stocks: product.stocks || {}
+      };
+      try {
+        await cloudDb.insert('products', [payload]);
+      } catch (insertErr) {
+        delete payload.stocks;
+        await cloudDb.insert('products', [payload]);
+      }
       return true;
     } catch (err) {
       console.error('Cloud save product error:', err);
@@ -2673,12 +2830,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const cloudUpdateProduct = async (product) => {
     try {
-      await cloudDb.update('products', {
+      const payload = {
         name: product.name,
         sizes: product.sizes,
         spec: product.spec,
-        rate: product.rate
-      }, `id=eq.${product.id}`);
+        rate: product.rate,
+        stocks: product.stocks || {}
+      };
+      try {
+        await cloudDb.update('products', payload, `id=eq.${product.id}`);
+      } catch (updateErr) {
+        delete payload.stocks;
+        await cloudDb.update('products', payload, `id=eq.${product.id}`);
+      }
       return true;
     } catch (err) {
       console.error('Cloud update product error:', err);
@@ -2902,7 +3066,8 @@ document.addEventListener('DOMContentLoaded', () => {
               name: p.name,
               sizes: p.sizes,
               spec: p.spec,
-              rate: rate
+              rate: rate,
+              stocks: p.stocks || (local && local.stocks ? local.stocks : {})
             };
           });
           hasCloudData = true;
@@ -3214,6 +3379,40 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  const renderProductStockInputs = (sizesStr, existingStocks = {}) => {
+    const container = document.getElementById('productStockInputsContainer');
+    if (!container) return;
+    const sizes = (sizesStr || '').split(',').map(s => s.trim()).filter(Boolean);
+    if (sizes.length === 0) {
+      container.innerHTML = '<div style="font-size: 11.5px; color: #94A3B8; font-style: italic;">Enter sizes above separated by commas to set stock levels.</div>';
+      return;
+    }
+    container.innerHTML = sizes.map(size => {
+      const currentQty = (existingStocks && existingStocks[size] !== undefined) ? existingStocks[size] : 0;
+      return `
+        <div class="stock-size-row">
+          <span class="stock-size-badge">${size}</span>
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <input type="number" class="stock-qty-input" data-size="${size}" value="${currentQty}" min="0" placeholder="0">
+            <span style="font-size: 11px; color: #64748B;">units</span>
+          </div>
+        </div>
+      `;
+    }).join('');
+  };
+
+  const getStockValuesFromModal = () => {
+    const stocks = {};
+    const inputs = document.querySelectorAll('#productStockInputsContainer .stock-qty-input');
+    inputs.forEach(inp => {
+      const sz = inp.dataset.size;
+      if (sz) {
+        stocks[sz] = Math.max(0, parseInt(inp.value, 10) || 0);
+      }
+    });
+    return stocks;
+  };
+
   const resetProductModalState = () => {
     const form = document.getElementById('addProductForm');
     if (form) form.reset();
@@ -3223,7 +3422,16 @@ document.addEventListener('DOMContentLoaded', () => {
     if (modalTitle) modalTitle.textContent = '+ Add New Product Line';
     const submitBtn = document.getElementById('btnSubmitProductModal');
     if (submitBtn) submitBtn.textContent = 'Save Product';
+    renderProductStockInputs('', {});
   };
+
+  const inputNewProductSizes = document.getElementById('newProductSizes');
+  if (inputNewProductSizes) {
+    inputNewProductSizes.addEventListener('input', (e) => {
+      const currentStocks = getStockValuesFromModal();
+      renderProductStockInputs(e.target.value, currentStocks);
+    });
+  }
 
   ['btnOpenAddProduct', 'btnOpenAddProductPage', 'btnOpenAddProductModal'].forEach(id => {
     const btn = document.getElementById(id);
@@ -3275,6 +3483,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const spec = document.getElementById('newProductSpec').value.trim();
       const rateVal = document.getElementById('newProductRate').value.trim();
       const rate = parseFloat(rateVal);
+      const stocks = getStockValuesFromModal();
 
       if (!name || isNaN(rate) || rate < 0) {
         showToast('Please enter valid product details with a valid rate', 'error');
@@ -3289,6 +3498,7 @@ document.addEventListener('DOMContentLoaded', () => {
           prod.sizes = sizes;
           prod.spec = spec;
           prod.rate = rate;
+          prod.stocks = stocks;
 
           saveLocalData();
           renderProductsTable();
@@ -3309,7 +3519,8 @@ document.addEventListener('DOMContentLoaded', () => {
         name,
         sizes,
         spec,
-        rate
+        rate,
+        stocks
       };
 
       state.products.push(newProd);
