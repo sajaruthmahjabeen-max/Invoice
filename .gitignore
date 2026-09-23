@@ -19,3 +19,7 @@ npm-debug.log*
 !login_showcase.jpg
 !icons/*.png
 !icons/*.svg
+
+# Temp browser profiles and binary dumps
+temp_profile/
+

@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Employment Certificate - KMS Pharmaceuticals</title>
+  <style>
+    @page {
+      size: A4 portrait;
+      margin: 0;
+    }
+    
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      width: 210mm;
+      height: 297mm;
+      margin: 0 auto;
+      padding: 22mm 24mm 18mm 24mm;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      color: #1a2530;
+      background-color: #ffffff;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    /* Top Letterhead Header */
+    .header-container {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 14px;
+      border-bottom: 2px solid #1678b9;
+    }
+
+    .logo-box {
+      display: flex;
+      align-items: center;
+    }
+
+    .logo-img {
+      height: 64px;
+      width: auto;
+      object-fit: contain;
+    }
+
+    .company-info {
+      text-align: right;
+    }
+
+    .company-title {
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 0.6px;
+      color: #0d3b75;
+      margin-bottom: 3px;
+    }
+
+    .company-address, .company-contact {
+      font-size: 11px;
+      color: #4b5868;
+      line-height: 1.45;
+    }
+
+    .date-row {
+      margin-top: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #0d3b75;
+    }
+
+    /* Main Certificate Content */
+    .certificate-body {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-around;
+      padding: 16px 0 10px 0;
+    }
+
+    /* Title Block */
+    .title-block {
+      text-align: center;
+      margin-bottom: 10px;
+    }
+
+    .main-title {
+      font-size: 24px;
+      font-weight: 800;
+      letter-spacing: 2px;
+      color: #0d3b75;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+
+    .sub-title {
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      color: #1e293b;
+      text-transform: uppercase;
+      display: inline-block;
+      padding-bottom: 5px;
+      border-bottom: 2.5px solid #1678b9;
+    }
+
+    /* Paragraphs */
+    .intro-p {
+      font-size: 13.5px;
+      line-height: 1.7;
+      color: #263342;
+      text-align: justify;
+      margin: 6px 0 14px 0;
+    }
+
+    /* Employee Details Card */
+    .details-card {
+      background: #f3f7fd;
+      border: 1px solid #d3e2f5;
+      border-radius: 8px;
+      padding: 16px 24px 18px 24px;
+      margin: 4px 0 14px 0;
+      box-shadow: 0 1px 3px rgba(13, 59, 117, 0.03);
+    }
+
+    .card-heading {
+      font-size: 12.5px;
+      font-weight: 700;
+      letter-spacing: 0.8px;
+      color: #0d3b75;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid #d9e6f7;
+    }
+
+    .details-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .details-table td {
+      padding: 5px 0;
+      font-size: 12.5px;
+      vertical-align: middle;
+    }
+
+    .details-table .label-col {
+      width: 175px;
+      font-weight: 600;
+      color: #0d3b75;
+    }
+
+    .details-table .colon-col {
+      width: 22px;
+      font-weight: 600;
+      color: #0d3b75;
+      text-align: center;
+    }
+
+    .details-table .value-col {
+      font-weight: 500;
+      color: #1a2530;
+    }
+
+    /* Middle & Purpose Paragraphs */
+    .middle-p {
+      font-size: 13.5px;
+      line-height: 1.7;
+      color: #263342;
+      text-align: justify;
+      margin-bottom: 10px;
+    }
+
+    .purpose-p {
+      font-size: 13px;
+      line-height: 1.65;
+      color: #4b5868;
+      text-align: justify;
+      margin-bottom: 16px;
+    }
+
+    /* Sign-off & Seal Block */
+    .closing-block {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      padding: 10px 0 8px 0;
+    }
+
+    .signature-container {
+      flex: 1;
+    }
+
+    .for-company {
+      font-size: 13px;
+      font-weight: 700;
+      color: #0d3b75;
+      margin-bottom: 4px;
+    }
+
+    .signature-wrapper {
+      height: 60px;
+      display: flex;
+      align-items: center;
+      margin-bottom: 4px;
+    }
+
+    .signature-img {
+      height: 56px;
+      width: auto;
+      object-fit: contain;
+    }
+
+    .signature-line {
+      width: 220px;
+      height: 1.2px;
+      background-color: #0d3b75;
+      margin-bottom: 8px;
+    }
+
+    .signer-name {
+      font-size: 13px;
+      font-weight: 700;
+      color: #0d3b75;
+      margin-bottom: 2px;
+    }
+
+    .signer-title {
+      font-size: 11.5px;
+      color: #4b5868;
+      line-height: 1.4;
+    }
+
+    .signer-company {
+      font-size: 11.5px;
+      color: #4b5868;
+      line-height: 1.4;
+    }
+
+    .contact-meta {
+      font-size: 10.5px;
+      color: #64748b;
+      margin-top: 8px;
+    }
+
+    /* Seal SVG Container */
+    .seal-container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-right: 15px;
+    }
+
+    /* Bottom Page Footer */
+    .footer-container {
+      border-top: 1px solid #cbd5e1;
+      padding-top: 10px;
+      text-align: center;
+    }
+
+    .footer-text {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 1.2px;
+      color: #1678b9;
+      text-transform: uppercase;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Letterhead -->
+  <header class="header-container">
+    <div class="logo-box">
+      <img src="logo.png" alt="KMS Pharmaceuticals" class="logo-img">
+    </div>
+    <div class="company-info">
+      <div class="company-title">KMS PHARMACEUTICALS</div>
+      <div class="company-address">6/24, Kayalar Lane, C. Pallavaram, Chennai – 600043</div>
+      <div class="company-contact">Phone: 6380639179</div>
+      <div class="date-row">Date: 18 September 2026</div>
+    </div>
+  </header>
+
+  <!-- Certificate Body -->
+  <main class="certificate-body">
+    <div>
+      <!-- Title -->
+      <div class="title-block">
+        <h1 class="main-title">EMPLOYMENT CERTIFICATE</h1>
+        <div class="sub-title">TO WHOM IT MAY CONCERN</div>
+      </div>
+
+      <!-- Introduction -->
+      <p class="intro-p">
+        This is to certify that <strong>Mr. A. Ashraf Ali</strong> is currently employed with <strong>KMS Pharmaceuticals</strong> as a <strong>Purchase Manager</strong>. He has been associated with the organization since <strong>11 January 2021</strong> and continues to be an active employee as of the date of this certificate.
+      </p>
+
+      <!-- Details Card -->
+      <div class="details-card">
+        <div class="card-heading">EMPLOYEE DETAILS</div>
+        <table class="details-table">
+          <tr>
+            <td class="label-col">Employee Name</td>
+            <td class="colon-col">:</td>
+            <td class="value-col">A. Ashraf Ali</td>
+          </tr>
+          <tr>
+            <td class="label-col">Designation</td>
+            <td class="colon-col">:</td>
+            <td class="value-col">Purchase Manager</td>
+          </tr>
+          <tr>
+            <td class="label-col">Date of Joining</td>
+            <td class="colon-col">:</td>
+            <td class="value-col">11 January 2021</td>
+          </tr>
+          <tr>
+            <td class="label-col">Employment Status</td>
+            <td class="colon-col">:</td>
+            <td class="value-col">Active Employee</td>
+          </tr>
+          <tr>
+            <td class="label-col">Employment Period</td>
+            <td class="colon-col">:</td>
+            <td class="value-col">11 January 2021 – Present</td>
+          </tr>
+          <tr>
+            <td class="label-col">Employee Address</td>
+            <td class="colon-col">:</td>
+            <td class="value-col">Anakaputhur, Chennai – 600070</td>
+          </tr>
+          <tr>
+            <td class="label-col">Employee Mobile</td>
+            <td class="colon-col">:</td>
+            <td class="value-col">9566376304</td>
+          </tr>
+        </table>
+      </div>
+
+      <!-- Feedback & Responsibilities -->
+      <p class="middle-p">
+        During his tenure, Mr. A. Ashraf Ali has been a valued member of our organization and has carried out the responsibilities assigned to his position. This certificate confirms his present employment with KMS Pharmaceuticals.
+      </p>
+
+      <!-- Purpose of Issue -->
+      <p class="purpose-p">
+        This certificate is issued upon the request of the employee for visa purposes, employment verification, and personal purposes.
+      </p>
+    </div>
+
+    <!-- Sign-off & Seal -->
+    <div class="closing-block">
+      <div class="signature-container">
+        <div class="for-company">For KMS Pharmaceuticals</div>
+        <div class="signature-wrapper">
+          <img src="signature.png" alt="Signature" class="signature-img">
+        </div>
+        <div class="signature-line"></div>
+        <div class="signer-name">K. Shahul Hameed</div>
+        <div class="signer-title">Chief Executive Officer (CEO)</div>
+        <div class="signer-company">KMS Pharmaceuticals</div>
+        <div class="contact-meta">Company: 6380639179 &nbsp;|&nbsp; Employee Mobile: 9566376304</div>
+      </div>
+
+      <!-- Vector Seal -->
+      <div class="seal-container">
+        <svg width="135" height="135" viewBox="0 0 140 140">
+          <!-- Outer Circle -->
+          <circle cx="70" cy="70" r="64" fill="none" stroke="#1678b9" stroke-width="2.5" />
+          <!-- Inner Circle -->
+          <circle cx="70" cy="70" r="56" fill="none" stroke="#1678b9" stroke-width="1.2" />
+
+          <!-- Top Arc for Text -->
+          <path id="seal-top-path" d="M 23 70 A 47 47 0 0 1 117 70" fill="none" />
+          <text font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="9.5" font-weight="700" fill="#0d3b75" letter-spacing="1">
+            <textPath href="#seal-top-path" startOffset="50%" text-anchor="middle">
+              KMS PHARMACEUTICALS
+            </textPath>
+          </text>
+
+          <!-- Star left & right -->
+          <text x="32" y="73" font-family="sans-serif" font-size="11" font-weight="bold" fill="#0d3b75" text-anchor="middle">★</text>
+          <text x="108" y="73" font-family="sans-serif" font-size="11" font-weight="bold" fill="#0d3b75" text-anchor="middle">★</text>
+
+          <!-- Center Text -->
+          <text x="70" y="66" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="10" font-weight="700" fill="#0d3b75" text-anchor="middle" letter-spacing="1">
+            COMPANY
+          </text>
+          <text x="70" y="79" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="10" font-weight="700" fill="#0d3b75" text-anchor="middle" letter-spacing="1.5">
+            SEAL
+          </text>
+
+          <!-- Bottom Arc for Text -->
+          <path id="seal-bottom-path" d="M 24 70 A 46 46 0 0 0 116 70" fill="none" />
+          <text font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="9" font-weight="600" fill="#0d3b75" letter-spacing="1">
+            <textPath href="#seal-bottom-path" startOffset="50%" text-anchor="middle">
+              CHENNAI – 600043
+            </textPath>
+          </text>
+        </svg>
+      </div>
+    </div>
+  </main>
+
+  <!-- Page Footer -->
+  <footer class="footer-container">
+    <div class="footer-text">KMS PHARMACEUTICALS &nbsp;•&nbsp; EMPLOYMENT CERTIFICATE</div>
+  </footer>
+
+</body>
+</html>

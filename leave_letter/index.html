@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Leave Letter - KMS Pharmaceuticals</title>
+  <style>
+    @page {
+      size: A4 portrait;
+      margin: 0;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: #f1f5f9;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      color: #1e293b;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 24px 0 40px;
+    }
+
+    /* Screen UI Action Toolbar */
+    .toolbar {
+      width: 210mm;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #ffffff;
+      padding: 12px 20px;
+      border-radius: 10px;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+      border: 1px solid #e2e8f0;
+    }
+
+    .toolbar-info {
+      font-size: 13.5px;
+      color: #475569;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .toolbar-info strong {
+      color: #0d3b75;
+    }
+
+    .btn-group {
+      display: flex;
+      gap: 10px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      font-size: 13px;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s ease;
+      text-decoration: none;
+    }
+
+    .btn-primary {
+      background: #0d3b75;
+      color: #ffffff;
+    }
+
+    .btn-primary:hover {
+      background: #092c5a;
+    }
+
+    .btn-secondary {
+      background: #f1f5f9;
+      color: #334155;
+      border: 1px solid #cbd5e1;
+    }
+
+    .btn-secondary:hover {
+      background: #e2e8f0;
+    }
+
+    /* Main Letter Page Container - Strict A4 */
+    .page {
+      width: 210mm;
+      height: 297mm;
+      background: #ffffff;
+      padding: 18mm 24mm 16mm 24mm;
+      box-shadow: 0 10px 30px rgba(15, 23, 42, 0.12);
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      box-sizing: border-box;
+    }
+
+    /* Top Letterhead Header */
+    .letterhead {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 16px;
+      border-bottom: 2px solid #1678b9;
+    }
+
+    .logo-container {
+      display: flex;
+      align-items: center;
+    }
+
+    .logo-container img {
+      height: 84px;
+      width: auto;
+      max-width: 270px;
+      object-fit: contain;
+    }
+
+    .company-contact-box {
+      text-align: right;
+      font-size: 11.5px;
+      line-height: 1.5;
+      color: #475569;
+    }
+
+    .company-contact-box .corp-name {
+      font-size: 14px;
+      font-weight: 800;
+      color: #0d3b75;
+      letter-spacing: 0.6px;
+      margin-bottom: 3px;
+    }
+
+    /* Letter Main Title */
+    .title-banner {
+      text-align: center;
+      margin: 22px 0 18px 0;
+    }
+
+    .letter-title {
+      font-size: 26px;
+      font-weight: 800;
+      letter-spacing: 3.5px;
+      color: #0d3b75;
+      text-transform: uppercase;
+      display: inline-block;
+    }
+
+    /* Letter Body Content Area */
+    .letter-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      font-size: 13.5px;
+      line-height: 1.75;
+      color: #1e293b;
+    }
+
+    .date-row {
+      margin-bottom: 16px;
+      font-weight: 700;
+      color: #0d3b75;
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+      font-size: 13.5px;
+    }
+
+    .recipient-block {
+      margin-bottom: 18px;
+      line-height: 1.55;
+      font-size: 13.5px;
+    }
+
+    .recipient-block .to-label {
+      font-weight: 700;
+      color: #0d3b75;
+      margin-bottom: 4px;
+    }
+
+    .recipient-name {
+      font-weight: 700;
+      color: #1e293b;
+    }
+
+    .subject-row {
+      margin-bottom: 16px;
+      font-weight: 700;
+      color: #0d3b75;
+      font-size: 14px;
+    }
+
+    .subject-row span {
+      color: #1e293b;
+      font-weight: 700;
+    }
+
+    .salutation {
+      margin-bottom: 14px;
+      font-weight: 600;
+      color: #1e293b;
+    }
+
+    .letter-text {
+      text-align: justify;
+      margin-bottom: 16px;
+      color: #263342;
+      line-height: 1.8;
+    }
+
+    /* Blank Lines for filling dates/info */
+    .blank-line {
+      display: inline-block;
+      border-bottom: 1.5px solid #0d3b75;
+      vertical-align: baseline;
+      min-height: 18px;
+    }
+
+    .blank-date {
+      width: 140px;
+    }
+
+    .blank-small-date {
+      width: 130px;
+    }
+
+    .blank-days {
+      width: 55px;
+    }
+
+    .blank-reason {
+      width: 280px;
+    }
+
+    /* Bottom Row Layout */
+    .bottom-section {
+      margin-top: auto;
+      padding-top: 10px;
+    }
+
+    .signatures-grid {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+    }
+
+    /* Left: Employee signature block */
+    .employee-signature-block {
+      width: 280px;
+    }
+
+    .sincerely {
+      font-weight: 600;
+      color: #1e293b;
+      margin-bottom: 28px;
+    }
+
+    .emp-sig-line {
+      width: 200px;
+      height: 1.2px;
+      background: #94a3b8;
+      margin-bottom: 8px;
+    }
+
+    .emp-name {
+      font-size: 13.5px;
+      font-weight: 700;
+      color: #0d3b75;
+    }
+
+    .emp-title {
+      font-size: 12px;
+      color: #475569;
+      margin-bottom: 4px;
+    }
+
+    .emp-contact {
+      font-size: 11px;
+      color: #64748b;
+      line-height: 1.45;
+    }
+
+    /* Left Seal Box (Placed below or alongside signature) */
+    .seal-row {
+      margin-top: 18px;
+    }
+
+    /* Right: Approved By Block */
+    .approved-by-block {
+      width: 260px;
+      text-align: left;
+    }
+
+    .approved-label {
+      font-size: 13.5px;
+      font-weight: 700;
+      color: #0d3b75;
+      margin-bottom: 6px;
+    }
+
+    .signature-area {
+      position: relative;
+      height: 60px;
+      display: flex;
+      align-items: flex-end;
+    }
+
+    .ceo-signature-img {
+      height: 54px;
+      width: auto;
+      object-fit: contain;
+      position: absolute;
+      left: 10px;
+      bottom: 3px;
+      pointer-events: none;
+    }
+
+    .approval-sig-line {
+      width: 100%;
+      height: 1.5px;
+      background: #0d3b75;
+      margin-bottom: 8px;
+    }
+
+    .mgr-name {
+      font-size: 13.5px;
+      font-weight: 700;
+      color: #0d3b75;
+    }
+
+    .mgr-title {
+      font-size: 12px;
+      color: #475569;
+      margin-bottom: 6px;
+    }
+
+    .approval-date-row {
+      font-size: 12px;
+      font-weight: 700;
+      color: #0d3b75;
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+    }
+
+    /* Page Footer */
+    .footer-bar {
+      border-top: 1.5px solid #1678b9;
+      padding-top: 12px;
+      text-align: center;
+      margin-top: 16px;
+    }
+
+    .footer-slogan {
+      font-size: 10.5px;
+      font-weight: 700;
+      letter-spacing: 2.2px;
+      color: #1678b9;
+      text-transform: uppercase;
+    }
+
+    /* Print Styles */
+    @media print {
+      body {
+        background: transparent;
+        padding: 0;
+      }
+
+      .no-print {
+        display: none !important;
+      }
+
+      .page {
+        box-shadow: none;
+        margin: 0;
+        width: 210mm;
+        height: 297mm;
+        page-break-after: avoid;
+        page-break-inside: avoid;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Screen Toolbar -->
+  <div class="toolbar no-print">
+    <div class="toolbar-info">
+      <span>📄 <strong>KMS Pharmaceuticals — Leave Letter</strong> (Single-page A4 format)</span>
+    </div>
+    <div class="btn-group">
+      <button class="btn btn-secondary" onclick="toggleEdit()" id="editBtn">✏️ Edit Text</button>
+      <button class="btn btn-primary" onclick="window.print()">🖨️ Print / Save as PDF</button>
+    </div>
+  </div>
+
+  <!-- A4 Printable Sheet -->
+  <div class="page" id="letterDoc">
+
+    <!-- Header / Letterhead -->
+    <header class="letterhead">
+      <div class="logo-container">
+        <img src="logo.png" alt="KMS Pharmaceuticals Logo">
+      </div>
+      <div class="company-contact-box">
+        <div class="corp-name">KMS PHARMACEUTICALS</div>
+        <div>6/24, Kayalar Lane, C. Pallavaram, Chennai – 600043</div>
+        <div>Phone: +91 6380639179</div>
+        <div>Email: info@kmspharmaceuticals.com</div>
+        <div>Website: www.kmspharmaceuticals.com</div>
+      </div>
+    </header>
+
+    <!-- Content Area -->
+    <main class="letter-content">
+      
+      <!-- Title -->
+      <div class="title-banner">
+        <h1 class="letter-title">LEAVE LETTER</h1>
+      </div>
+
+      <!-- Date Line (Blank for filling later) -->
+      <div class="date-row">
+        <span>Date:</span>
+        <span class="blank-line blank-date" id="docDate"></span>
+      </div>
+
+      <!-- Recipient Block -->
+      <div class="recipient-block">
+        <div class="to-label">To,</div>
+        <div class="recipient-name">K. Shahul Hameed</div>
+        <div>Chief Executive Officer (CEO)</div>
+        <div>KMS Pharmaceuticals</div>
+        <div>6/24, Kayalar Lane, C. Pallavaram, Chennai – 600043</div>
+      </div>
+
+      <!-- Subject -->
+      <div class="subject-row">
+        Subject: <span>Leave of Absence</span>
+      </div>
+
+      <!-- Salutation -->
+      <div class="salutation">
+        Dear Sir/Madam,
+      </div>
+
+      <!-- Body Paragraph 1 -->
+      <p class="letter-text">
+        This is to inform you that I, <strong>A. Ashraf Ali</strong>, working as <strong>Purchase Manager</strong>, will be on leave from <span class="blank-line blank-date"></span> to <span class="blank-line blank-date"></span> (total <span class="blank-line blank-days"></span> days) for <span class="blank-line blank-reason"></span>.
+      </p>
+
+      <!-- Body Paragraph 2 -->
+      <p class="letter-text">
+        I will resume my duties on <span class="blank-line blank-date"></span> and ensure that all my pending work will be completed or handed over before my leave begins.
+      </p>
+
+      <!-- Body Paragraph 3 -->
+      <p class="letter-text">
+        I kindly request you to grant me the leave for the above-mentioned period.
+      </p>
+
+      <!-- Closing Courtesy -->
+      <p class="letter-text" style="margin-bottom: 10px;">
+        Thank you for your understanding and support.
+      </p>
+
+      <!-- Bottom Grid with Signatures & Seal -->
+      <div class="bottom-section">
+        <div class="signatures-grid">
+          
+          <!-- Left: Employee Sign Block + Seal -->
+          <div class="employee-signature-block">
+            <div class="sincerely">Sincerely,</div>
+            <div class="emp-sig-line"></div>
+            <div class="emp-name">A. Ashraf Ali</div>
+            <div class="emp-title">Purchase Manager</div>
+            <div class="emp-contact">Contact: +91 9566376304</div>
+            <div class="emp-contact">Email: ashraf.ali@kmspharmaceuticals.com</div>
+
+            <!-- Official Seal under signature -->
+            <div class="seal-row">
+              <svg width="125" height="125" viewBox="0 0 140 140">
+                <!-- Outer Border Circles -->
+                <circle cx="70" cy="70" r="65" fill="none" stroke="#1678b9" stroke-width="2.5" />
+                <circle cx="70" cy="70" r="57" fill="none" stroke="#1678b9" stroke-width="1.2" />
+
+                <!-- Top Arc for Text -->
+                <path id="seal-top-curve" d="M 22 70 A 48 48 0 0 1 118 70" fill="none" />
+                <text font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="9.5" font-weight="800" fill="#0d3b75" letter-spacing="1.2">
+                  <textPath href="#seal-top-curve" startOffset="50%" text-anchor="middle">
+                    KMS PHARMACEUTICALS
+                  </textPath>
+                </text>
+
+                <!-- Star Decors -->
+                <text x="31" y="73" font-size="11" font-weight="bold" fill="#0d3b75" text-anchor="middle">★</text>
+                <text x="109" y="73" font-size="11" font-weight="bold" fill="#0d3b75" text-anchor="middle">★</text>
+
+                <!-- Center Stamp Text -->
+                <text x="70" y="65" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="10" font-weight="800" fill="#0d3b75" text-anchor="middle" letter-spacing="1.2">
+                  OFFICIAL
+                </text>
+                <text x="70" y="79" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="10" font-weight="800" fill="#0d3b75" text-anchor="middle" letter-spacing="1.8">
+                  SEAL
+                </text>
+
+                <!-- Bottom Arc for Location -->
+                <path id="seal-bottom-curve" d="M 23 70 A 47 47 0 0 0 117 70" fill="none" />
+                <text font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="9" font-weight="700" fill="#0d3b75" letter-spacing="1.2">
+                  <textPath href="#seal-bottom-curve" startOffset="50%" text-anchor="middle">
+                    CHENNAI – 600043
+                  </textPath>
+                </text>
+              </svg>
+            </div>
+          </div>
+
+          <!-- Right: Approved By Block with CEO Signature -->
+          <div class="approved-by-block">
+            <div class="approved-label">Approved By:</div>
+            <div class="signature-area">
+              <img src="signature.png" alt="CEO Signature" class="ceo-signature-img">
+            </div>
+            <div class="approval-sig-line"></div>
+            <div class="mgr-name">K. Shahul Hameed</div>
+            <div class="mgr-title">Chief Executive Officer (CEO)</div>
+            <div class="approval-date-row">
+              <span>Date:</span>
+              <span class="blank-line blank-small-date"></span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </main>
+
+    <!-- Page Footer with Slogan -->
+    <footer class="footer-bar">
+      <div class="footer-slogan">TOGETHER WE BUILD A BETTER TOMORROW</div>
+    </footer>
+
+  </div>
+
+  <script>
+    let isEditing = false;
+    function toggleEdit() {
+      isEditing = !isEditing;
+      const editBtn = document.getElementById('editBtn');
+      const contentRoot = document.getElementById('letterDoc');
+      contentRoot.contentEditable = isEditing ? 'true' : 'false';
+      
+      if (isEditing) {
+        editBtn.textContent = '💾 Done Editing';
+        editBtn.style.background = '#0d9488';
+        editBtn.style.color = '#ffffff';
+      } else {
+        editBtn.textContent = '✏️ Edit Text';
+        editBtn.style.background = '#f1f5f9';
+        editBtn.style.color = '#334155';
+      }
+    }
+  </script>
+</body>
+</html>

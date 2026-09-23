@@ -502,7 +502,11 @@ document.addEventListener('DOMContentLoaded', () => {
     salesReportMonth: new Date().toISOString().substring(0, 7),
     outstandingMonth: '',
     outstandingSearch: '',
-    expandedHospitalIds: []
+    expandedHospitalIds: [],
+    pendingDeletedInvoiceNos: new Set(),
+    pendingDeletedClinicIds: new Set(),
+    pendingDeletedProductIds: new Set(),
+    pendingStatusUpdates: {}
   };
 
   const recalculateNextInvoiceNumber = () => {
@@ -1346,91 +1350,103 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  const generateBillAction = async (silent = false) => {
+    if (!state.selectedClinicId) {
+      if (!silent) {
+        showToast('Please select a Clinic / Hospital', 'error');
+        if (selectClinic) selectClinic.focus();
+      }
+      return null;
+    }
+
+    const validItems = state.items.filter(i => (i.name || '').trim() !== '' && Number(i.qty) > 0);
+    if (validItems.length === 0) {
+      if (!silent) showToast('Please add at least one valid item name', 'error');
+      return null;
+    }
+
+    const total = validItems.reduce((sum, i) => sum + (Number(i.qty) * Number(i.rate)), 0);
+    if (total <= 0) {
+      if (!silent) showToast('Please enter item rate to calculate total', 'error');
+      return null;
+    }
+
+    const clinic = state.clinics.find(c => c.id === state.selectedClinicId);
+
+    // Ensure we have the latest unique invoice number
+    recalculateNextInvoiceNumber();
+
+    const selectStatusEl = document.getElementById('selectInitialBillStatus');
+    const chosenStatus = selectStatusEl ? selectStatusEl.value : 'Paid';
+
+    const newBill = {
+      id: generateUUID(),
+      invoiceNo: state.invoiceNumber,
+      clinicName: clinic ? clinic.name : 'Selected Clinic',
+      clinicId: clinic ? clinic.id : null,
+      date: state.invoiceDate,
+      itemsSummary: validItems.map(i => `${i.name} (${i.qty})`).join(', '),
+      amount: total,
+      status: chosenStatus || 'Paid',
+      itemsSnapshot: JSON.parse(JSON.stringify(validItems))
+    };
+
+    // Instantly record locally
+    state.recentBills.unshift(newBill);
+    if (clinic) {
+      clinic.totalOrders = (clinic.totalOrders || 0) + 1;
+      clinic.totalBilled = (clinic.totalBilled || 0) + total;
+    }
+
+    // Automatically deduct billed quantities from product stock per size
+    const stockUpdatedProducts = [];
+    validItems.forEach(item => {
+      const prod = state.products.find(p => (p.name || '').trim().toLowerCase() === (item.name || '').trim().toLowerCase());
+      if (prod) {
+        if (!prod.stocks) prod.stocks = {};
+        const sizeList = (prod.sizes || '').split(',').map(s => s.trim()).filter(Boolean);
+        let sizeKey = Object.keys(prod.stocks).find(s => s.trim().toLowerCase() === (item.size || '').trim().toLowerCase());
+        if (!sizeKey) {
+          sizeKey = sizeList.find(s => s.trim().toLowerCase() === (item.size || '').trim().toLowerCase()) || (sizeList.length > 0 ? sizeList[0] : (item.size || 'Standard'));
+        }
+        const currentStock = prod.stocks[sizeKey] !== undefined ? Number(prod.stocks[sizeKey]) : 0;
+        prod.stocks[sizeKey] = Math.max(0, currentStock - Number(item.qty || 0));
+        if (!stockUpdatedProducts.includes(prod)) stockUpdatedProducts.push(prod);
+      }
+    });
+
+    // Async sync updated stock to cloud
+    stockUpdatedProducts.forEach(prod => {
+      cloudUpdateProduct(prod);
+    });
+
+    saveLocalData();
+    updateStatsUI();
+    renderRecentBillsTable();
+    renderAllBillsPageView();
+    renderClinicsPageView();
+    renderProductsTable();
+    updateProductsCatalogUI();
+
+    // Advance invoice counter for subsequent bill
+    recalculateNextInvoiceNumber();
+
+    // Sync bill to Supabase Cloud
+    const cloudSuccess = await cloudSaveBill(newBill, clinic);
+    if (cloudSuccess) {
+      showToast(`🎉 Bill ${newBill.invoiceNo} saved & synced to cloud!`, 'success');
+    } else {
+      showToast(`💾 Bill ${newBill.invoiceNo} saved locally`, 'normal');
+    }
+
+    return newBill;
+  };
+  window.generateBillAction = generateBillAction;
+
   const btnGenerateBill = document.getElementById('btnGenerateBill');
   if (btnGenerateBill) {
     btnGenerateBill.addEventListener('click', async () => {
-      if (!state.selectedClinicId) {
-        showToast('Please select a Clinic / Hospital', 'error');
-        selectClinic.focus();
-        return;
-      }
-
-      const validItems = state.items.filter(i => i.name.trim() !== '' && Number(i.qty) > 0);
-      if (validItems.length === 0) {
-        showToast('Please add at least one valid item name', 'error');
-        return;
-      }
-
-      const total = validItems.reduce((sum, i) => sum + (Number(i.qty) * Number(i.rate)), 0);
-      if (total <= 0) {
-        showToast('Please enter item rate to calculate total', 'error');
-        return;
-      }
-
-      const clinic = state.clinics.find(c => c.id === state.selectedClinicId);
-
-      // Ensure we have the latest unique invoice number
-      recalculateNextInvoiceNumber();
-
-      const newBill = {
-        id: generateUUID(),
-        invoiceNo: state.invoiceNumber,
-        clinicName: clinic ? clinic.name : 'Selected Clinic',
-        clinicId: clinic ? clinic.id : null,
-        date: state.invoiceDate,
-        itemsSummary: validItems.map(i => `${i.name} (${i.qty})`).join(', '),
-        amount: total,
-        status: 'Paid',
-        itemsSnapshot: JSON.parse(JSON.stringify(validItems))
-      };
-
-      // Instantly record locally
-      state.recentBills.unshift(newBill);
-      if (clinic) {
-        clinic.totalOrders = (clinic.totalOrders || 0) + 1;
-        clinic.totalBilled = (clinic.totalBilled || 0) + total;
-      }
-
-      // Automatically deduct billed quantities from product stock per size
-      const stockUpdatedProducts = [];
-      validItems.forEach(item => {
-        const prod = state.products.find(p => p.name.trim().toLowerCase() === (item.name || '').trim().toLowerCase());
-        if (prod) {
-          if (!prod.stocks) prod.stocks = {};
-          const sizeList = (prod.sizes || '').split(',').map(s => s.trim()).filter(Boolean);
-          let sizeKey = Object.keys(prod.stocks).find(s => s.trim().toLowerCase() === (item.size || '').trim().toLowerCase());
-          if (!sizeKey) {
-            sizeKey = sizeList.find(s => s.trim().toLowerCase() === (item.size || '').trim().toLowerCase()) || (sizeList.length > 0 ? sizeList[0] : (item.size || 'Standard'));
-          }
-          const currentStock = prod.stocks[sizeKey] !== undefined ? Number(prod.stocks[sizeKey]) : 0;
-          prod.stocks[sizeKey] = Math.max(0, currentStock - Number(item.qty || 0));
-          if (!stockUpdatedProducts.includes(prod)) stockUpdatedProducts.push(prod);
-        }
-      });
-
-      // Async sync updated stock to cloud
-      stockUpdatedProducts.forEach(prod => {
-        cloudUpdateProduct(prod);
-      });
-
-      saveLocalData();
-      updateStatsUI();
-      renderRecentBillsTable();
-      renderAllBillsPageView();
-      renderClinicsPageView();
-      renderProductsTable();
-      updateProductsCatalogUI();
-
-      // Advance invoice counter for subsequent bill
-      recalculateNextInvoiceNumber();
-
-      // Sync bill to Supabase Cloud
-      const cloudSuccess = await cloudSaveBill(newBill, clinic);
-      if (cloudSuccess) {
-        showToast(`🎉 Bill ${newBill.invoiceNo} saved & synced to cloud!`, 'success');
-      } else {
-        showToast(`💾 Bill ${newBill.invoiceNo} saved locally`, 'normal');
-      }
+      await generateBillAction(false);
     });
   }
 
@@ -2053,11 +2069,19 @@ document.addEventListener('DOMContentLoaded', () => {
     // Keep company letterhead and signature in sync
     renderSettingsUI();
 
+    const previewInvStatus = document.getElementById('previewInvStatus');
+
     if (!bill) {
       // Default to live active form in state
       const clinic = state.clinics.find(c => c.id === state.selectedClinicId);
       if (previewInvNo) previewInvNo.textContent = state.invoiceNumber;
       if (previewInvDate) previewInvDate.textContent = state.invoiceDate || getTodayFormatted();
+      const selStatus = document.getElementById('selectInitialBillStatus');
+      const curStatus = selStatus ? selStatus.value : 'Paid';
+      if (previewInvStatus) {
+        previewInvStatus.textContent = curStatus;
+        previewInvStatus.style.color = curStatus === 'Paid' ? '#16A34A' : '#E11D48';
+      }
       if (clinic) {
         if (previewClinicName) previewClinicName.textContent = clinic.name;
         if (previewClinicAddress) previewClinicAddress.textContent = clinic.address;
@@ -2069,6 +2093,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (previewInvNo) previewInvNo.textContent = bill.invoiceNo;
     if (previewInvDate) previewInvDate.textContent = bill.date;
+    if (previewInvStatus) {
+      const bStatus = bill.status || 'Paid';
+      previewInvStatus.textContent = bStatus;
+      previewInvStatus.style.color = bStatus === 'Paid' ? '#16A34A' : '#E11D48';
+    }
 
     const clinic = state.clinics.find(c => c.id === bill.clinicId || c.name === bill.clinicName);
     if (previewClinicName) previewClinicName.textContent = bill.clinicName || (clinic ? clinic.name : 'Clinic / Hospital');
@@ -2100,10 +2129,16 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   // Dedicated Print Function — opens isolated popup with just the invoice
-  window.printInvoice = (invoiceNo) => {
+  window.printInvoice = async (invoiceNo) => {
     let bill = null;
     if (invoiceNo) {
       bill = state.recentBills.find(b => b.invoiceNo === invoiceNo);
+    } else {
+      // Auto-save bill if user is drafting a valid bill on the create bill screen
+      const validItems = state.items.filter(i => (i.name || '').trim() !== '' && Number(i.qty) > 0);
+      if (state.selectedClinicId && validItems.length > 0) {
+        bill = await generateBillAction(false);
+      }
     }
     // Populate preview first so HTML is up to date
     window.populateInvoicePreview(bill);
@@ -2115,7 +2150,8 @@ document.addEventListener('DOMContentLoaded', () => {
       const s = state.settings;
       const invNo = bill ? bill.invoiceNo : (previewInvNo ? previewInvNo.textContent : 'Invoice');
       const invDate = bill ? bill.date : (previewInvDate ? previewInvDate.textContent : '');
-      const invStatus = bill ? (bill.status || 'Paid') : 'Paid';
+      const selStatus = document.getElementById('selectInitialBillStatus');
+      const invStatus = bill ? (bill.status || 'Paid') : (selStatus ? selStatus.value : 'Paid');
       const clinicObj = bill
         ? state.clinics.find(c => c.id === bill.clinicId || c.name === bill.clinicName)
         : state.clinics.find(c => c.id === state.selectedClinicId);
@@ -2384,10 +2420,16 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 50);
   };
 
-  window.downloadInvoicePdf = (invoiceNo) => {
+  window.downloadInvoicePdf = async (invoiceNo) => {
     let bill = null;
     if (invoiceNo) {
       bill = state.recentBills.find(b => b.invoiceNo === invoiceNo);
+    } else {
+      // Auto-save bill if user is drafting a valid bill on the create bill screen
+      const validItems = state.items.filter(i => (i.name || '').trim() !== '' && Number(i.qty) > 0);
+      if (state.selectedClinicId && validItems.length > 0) {
+        bill = await generateBillAction(false);
+      }
     }
     window.populateInvoicePreview(bill);
     const element = document.getElementById('invoiceSheetToExport');
@@ -2422,12 +2464,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const bill = state.recentBills.find(b => b.invoiceNo === invoiceNo);
     if (!bill) return;
     bill.status = bill.status === 'Paid' ? 'Unpaid' : 'Paid';
+    state.pendingStatusUpdates[invoiceNo] = bill.status;
     saveLocalData();
     updateStatsUI();
     renderRecentBillsTable();
     renderAllBillsPageView();
     renderOutstandingTable();
-    cloudUpdateBillStatus(invoiceNo, bill.status);
+    try {
+      await cloudUpdateBillStatus(invoiceNo, bill.status);
+    } catch (err) {
+      console.warn('Update bill status cloud notice:', err);
+    } finally {
+      delete state.pendingStatusUpdates[invoiceNo];
+    }
     showToast(`Invoice ${invoiceNo} marked as ${bill.status}`, 'success');
   };
 
@@ -2466,6 +2515,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   window.deleteClinic = async (clinicId) => {
     if (!confirm('Are you sure you want to remove this clinic facility?')) return;
+    state.pendingDeletedClinicIds.add(clinicId);
     state.clinics = state.clinics.filter(c => c.id !== clinicId);
     if (state.selectedClinicId === clinicId) {
       state.selectedClinicId = state.clinics.length > 0 ? state.clinics[0].id : '';
@@ -2474,7 +2524,11 @@ document.addEventListener('DOMContentLoaded', () => {
     renderClinicSelect();
     renderClinicsPageView();
     updateStatsUI();
-    cloudDeleteClinic(clinicId);
+    try {
+      await cloudDeleteClinic(clinicId);
+    } catch (err) {
+      console.warn('Delete clinic cloud notice:', err);
+    }
     showToast('Clinic facility deleted', 'normal');
   };
 
@@ -2483,6 +2537,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const billToDelete = state.recentBills.find(b => b.invoiceNo === invoiceNo);
     if (!billToDelete) return;
+
+    state.pendingDeletedInvoiceNos.add(invoiceNo);
 
     // Remove bill from local state
     state.recentBills = state.recentBills.filter(b => b.invoiceNo !== invoiceNo);
@@ -2527,8 +2583,11 @@ document.addEventListener('DOMContentLoaded', () => {
     renderClinicsPageView();
     recalculateNextInvoiceNumber();
 
-    // Async sync deletion to Cloud Supabase
-    cloudDeleteBill(invoiceNo);
+    try {
+      await cloudDeleteBill(invoiceNo);
+    } catch (err) {
+      console.warn('Delete bill cloud error:', err);
+    }
     showToast(`Invoice ${invoiceNo} deleted successfully`, 'normal');
   };
 
@@ -2621,13 +2680,18 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
-  window.deleteProduct = (productId) => {
+  window.deleteProduct = async (productId) => {
     if (!confirm('Are you sure you want to remove this product?')) return;
+    state.pendingDeletedProductIds.add(productId);
     state.products = state.products.filter(p => p.id !== productId);
     saveLocalData();
     renderProductsTable();
     updateProductsCatalogUI();
-    cloudDeleteProduct(productId);
+    try {
+      await cloudDeleteProduct(productId);
+    } catch (err) {
+      console.warn('Delete product cloud notice:', err);
+    }
     showToast('Product removed', 'normal');
   };
 
@@ -2993,8 +3057,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
       let hasCloudData = false;
       if (Array.isArray(dbClinics)) {
-        if (dbClinics.length > 0) {
-          state.clinics = dbClinics.map(c => ({
+        const cloudClinics = dbClinics
+          .filter(c => !state.pendingDeletedClinicIds.has(c.id))
+          .map(c => ({
             id: c.id,
             name: c.name,
             contactPerson: c.contact_person,
@@ -3003,42 +3068,66 @@ document.addEventListener('DOMContentLoaded', () => {
             totalBilled: parseFloat(c.total_billed) || 0,
             totalOrders: 0
           }));
-          hasCloudData = true;
-        } else {
-          const realLocalClinics = (state.clinics || []).filter(c => c.id !== 'c1' && c.id !== 'c2' && c.id !== 'c3');
-          if (realLocalClinics.length > 0) {
-            for (const c of realLocalClinics) {
-              await cloudSaveClinic(c);
-            }
-          } else {
-            state.clinics = [];
+
+        // Preserve local clinics that haven't synced yet
+        const clinicMap = new Map();
+        cloudClinics.forEach(c => clinicMap.set(c.id, c));
+        (state.clinics || []).forEach(lc => {
+          if (!lc || !lc.id || state.pendingDeletedClinicIds.has(lc.id)) return;
+          if (!clinicMap.has(lc.id)) {
+            clinicMap.set(lc.id, lc);
           }
-        }
+        });
+        state.clinics = Array.from(clinicMap.values());
+        hasCloudData = true;
       }
 
       if (Array.isArray(dbBills)) {
-        if (dbBills.length > 0) {
-          state.recentBills = dbBills.map(b => ({
-            id: b.id,
-            invoiceNo: b.invoice_no,
-            clinicName: b.clinic_name,
-            clinicId: b.clinic_id,
-            date: b.date,
-            amount: parseFloat(b.total_amount) || 0,
-            status: b.status || 'Paid',
-            itemsSnapshot: b.items || [],
-            itemsSummary: Array.isArray(b.items) ? b.items.map(i => `${i.name} (${i.qty})`).join(', ') : ''
-          }));
-          hasCloudData = true;
-        } else {
-          const realLocalBills = (state.recentBills || []).filter(b => b.id !== 'b1' && b.id !== 'b2' && b.id !== 'b3');
-          if (realLocalBills.length > 0) {
-            for (const b of realLocalBills) {
-              const c = state.clinics.find(cl => cl.id === b.clinicId || cl.name === b.clinicName);
-              await cloudSaveBill(b, c);
-            }
+        const cloudBillMap = new Map();
+        dbBills
+          .filter(b => !state.pendingDeletedInvoiceNos.has(b.invoice_no))
+          .forEach(b => {
+            const status = state.pendingStatusUpdates[b.invoice_no] || b.status || 'Paid';
+            cloudBillMap.set(b.invoice_no, {
+              id: b.id,
+              invoiceNo: b.invoice_no,
+              clinicName: b.clinic_name,
+              clinicId: b.clinic_id,
+              date: b.date,
+              amount: parseFloat(b.total_amount) || 0,
+              status: status,
+              itemsSnapshot: b.items || [],
+              itemsSummary: Array.isArray(b.items) ? b.items.map(i => `${i.name} (${i.qty})`).join(', ') : ''
+            });
+          });
+
+        // Two-Way Sync: Preserve any local bills not in cloud yet
+        const localPendingBillsToUpload = [];
+        (state.recentBills || []).forEach(localBill => {
+          if (!localBill || !localBill.invoiceNo) return;
+          if (state.pendingDeletedInvoiceNos.has(localBill.invoiceNo)) return;
+          if (!cloudBillMap.has(localBill.invoiceNo)) {
+            cloudBillMap.set(localBill.invoiceNo, localBill);
+            localPendingBillsToUpload.push(localBill);
           }
+        });
+
+        state.recentBills = Array.from(cloudBillMap.values());
+        hasCloudData = true;
+
+        if (localPendingBillsToUpload.length > 0) {
+          (async () => {
+            for (const lb of localPendingBillsToUpload) {
+              try {
+                const c = state.clinics.find(cl => cl.id === lb.clinicId || cl.name === lb.clinicName);
+                await cloudSaveBill(lb, c);
+              } catch (e) {
+                console.warn('Sync pending local bill notice:', e);
+              }
+            }
+          })();
         }
+
         state.clinics.forEach(c => {
           const cBills = state.recentBills.filter(b => b.clinicId === c.id || b.clinicName === c.name);
           c.totalOrders = cBills.length;
@@ -3047,8 +3136,9 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       if (Array.isArray(dbProducts)) {
-        if (dbProducts.length > 0) {
-          state.products = dbProducts.map(p => {
+        const cloudProducts = dbProducts
+          .filter(p => !state.pendingDeletedProductIds.has(p.id))
+          .map(p => {
             const local = (state.products || []).find(lp => lp.id === p.id);
             let rate = parseFloat(p.rate) || 0;
             // Guard: If local product has higher decimal precision than cloud (e.g. local 0.536 vs cloud 0.54), keep local rate!
@@ -3070,15 +3160,17 @@ document.addEventListener('DOMContentLoaded', () => {
               stocks: p.stocks || (local && local.stocks ? local.stocks : {})
             };
           });
-          hasCloudData = true;
-        } else {
-          const realLocalProds = (state.products || []).filter(p => p.id !== 'p1' && p.id !== 'p2' && p.id !== 'p3' && p.id !== 'p4');
-          if (realLocalProds.length > 0) {
-            for (const p of realLocalProds) {
-              await cloudSaveProduct(p);
-            }
+
+        const prodMap = new Map();
+        cloudProducts.forEach(p => prodMap.set(p.id, p));
+        (state.products || []).forEach(lp => {
+          if (!lp || !lp.id || state.pendingDeletedProductIds.has(lp.id)) return;
+          if (!prodMap.has(lp.id)) {
+            prodMap.set(lp.id, lp);
           }
-        }
+        });
+        state.products = Array.from(prodMap.values());
+        hasCloudData = true;
       }
 
       if (Array.isArray(dbSettings) && dbSettings.length > 0 && dbSettings[0]) {
@@ -3648,6 +3740,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const btnDownloadTop = document.getElementById('btnDownloadTop');
   if (btnDownloadTop) btnDownloadTop.addEventListener('click', () => window.downloadInvoicePdf());
+
+  const selectInitialStatus = document.getElementById('selectInitialBillStatus');
+  if (selectInitialStatus) {
+    selectInitialStatus.addEventListener('change', () => {
+      const previewInvStatus = document.getElementById('previewInvStatus');
+      if (previewInvStatus) {
+        const val = selectInitialStatus.value;
+        previewInvStatus.textContent = val;
+        previewInvStatus.style.color = val === 'Paid' ? '#16A34A' : '#E11D48';
+      }
+    });
+  }
 
   const btnContactSupport = document.getElementById('btnContactSupport');
   if (btnContactSupport) {

@@ -527,9 +527,18 @@
               <span>Total Amount</span>
               <div class="total-pill-box" id="formTotalDisplay">₹ 0.00</div>
             </div>
-            <button class="btn-pill-reset" id="btnResetForm">Reset</button>
-            <button class="btn-pill-draft" id="btnSaveDraft">Save Draft</button>
-            <button class="btn-pill-generate" id="btnGenerateBill">Generate Bill</button>
+            <div class="status-select-group" style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-size: 12px; font-weight: 700; color: #64748B;">Payment:</span>
+              <select id="selectInitialBillStatus" class="form-control" style="width: auto; padding: 6px 12px; font-size: 13px; font-weight: 700; border-radius: 9999px; cursor: pointer; border: 1.5px solid #CBD5E1; background: #FFFFFF;">
+                <option value="Paid" selected>✓ Paid</option>
+                <option value="Unpaid">● Unpaid</option>
+              </select>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px; margin-left: auto;">
+              <button class="btn-pill-reset" id="btnResetForm">Reset</button>
+              <button class="btn-pill-draft" id="btnSaveDraft">Save Draft</button>
+              <button class="btn-pill-generate" id="btnGenerateBill">Generate Bill</button>
+            </div>
           </div>
         </div>
 
@@ -557,6 +566,7 @@
                   <div class="invoice-badge-pill">INVOICE</div>
                   <div class="meta-line">Invoice No : <strong id="previewInvNo">INV-2026-00001</strong></div>
                   <div class="meta-line">Date : <strong id="previewInvDate">—</strong></div>
+                  <div class="meta-line">Status : <strong id="previewInvStatus" style="color: #16A34A; font-weight: 800;">Paid</strong></div>
                 </div>
               </div>
 
@@ -1406,7 +1416,7 @@
 <!-- LOCAL OFFLINE SDKs & CONFIG -->
 <script src="libs/supabase.js"></script>
 <script src="env.js"></script>
-<script src="app.js?v=3.6"></script>
+<script src="app.js?v=3.7"></script>
 
 <!-- PWA SERVICE WORKER REGISTRATION & OFFLINE HANDLER -->
 <script>

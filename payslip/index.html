@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Payslip June 2026 - A. Ashraf Ali - KMS Pharmaceuticals</title>
+  <style>
+    @page {
+      size: A4 portrait;
+      margin: 0;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: #f1f5f9;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      color: #0f172a;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 24px 0 40px;
+    }
+
+    /* Screen UI Action Toolbar */
+    .toolbar {
+      width: 210mm;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #ffffff;
+      padding: 12px 20px;
+      border-radius: 10px;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+      border: 1px solid #e2e8f0;
+    }
+
+    .toolbar-info {
+      font-size: 13.5px;
+      color: #475569;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .toolbar-info strong {
+      color: #0d3b75;
+    }
+
+    .btn-group {
+      display: flex;
+      gap: 10px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      font-size: 13px;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s ease;
+      text-decoration: none;
+    }
+
+    .btn-primary {
+      background: #0d3b75;
+      color: #ffffff;
+    }
+
+    .btn-primary:hover {
+      background: #092c5a;
+    }
+
+    .btn-secondary {
+      background: #f1f5f9;
+      color: #334155;
+      border: 1px solid #cbd5e1;
+    }
+
+    .btn-secondary:hover {
+      background: #e2e8f0;
+    }
+
+    /* Main Document Sheet Container - Strict A4 */
+    .page {
+      width: 210mm;
+      height: 297mm;
+      background: #ffffff;
+      padding: 16mm 20mm 14mm 20mm;
+      box-shadow: 0 10px 30px rgba(15, 23, 42, 0.12);
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      box-sizing: border-box;
+    }
+
+    /* Outer Payslip Border Box */
+    .payslip-border-container {
+      border: 1.8px solid #0d3b75;
+      padding: 18px 20px 14px 20px;
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      justify-content: space-between;
+    }
+
+    /* Top Letterhead Header */
+    .header-block {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-bottom: 12px;
+      border-bottom: 1.5px solid #0d3b75;
+    }
+
+    .header-logo {
+      display: flex;
+      align-items: center;
+    }
+
+    .header-logo img {
+      height: 72px;
+      width: auto;
+      max-width: 210px;
+      object-fit: contain;
+    }
+
+    .header-company-info {
+      text-align: right;
+      line-height: 1.45;
+    }
+
+    .company-title {
+      font-size: 16px;
+      font-weight: 800;
+      color: #0d3b75;
+      letter-spacing: 0.8px;
+      margin-bottom: 2px;
+    }
+
+    .company-address {
+      font-size: 11px;
+      color: #334155;
+      font-weight: 500;
+    }
+
+    .company-meta {
+      font-size: 11px;
+      color: #475569;
+    }
+
+    /* Payslip Month Banner */
+    .payslip-title-banner {
+      text-align: center;
+      padding: 10px 0 8px 0;
+      border-bottom: 1.5px solid #0d3b75;
+    }
+
+    .payslip-title {
+      font-size: 15px;
+      font-weight: 800;
+      letter-spacing: 1.5px;
+      color: #0d3b75;
+      text-transform: uppercase;
+    }
+
+    /* Employee & Bank Info Grid */
+    .emp-meta-section {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      border-bottom: 1.5px solid #0d3b75;
+      font-size: 12px;
+    }
+
+    .meta-col {
+      padding: 8px 12px;
+    }
+
+    .meta-col-left {
+      border-right: 1.5px solid #0d3b75;
+      padding-left: 4px;
+    }
+
+    .meta-col-right {
+      padding-right: 4px;
+    }
+
+    .meta-row {
+      display: grid;
+      align-items: baseline;
+      padding: 3px 0;
+      line-height: 1.4;
+    }
+
+    .meta-col-left .meta-row {
+      grid-template-columns: 142px 14px 1fr;
+    }
+
+    .meta-col-right .meta-row {
+      grid-template-columns: 105px 14px 1fr;
+    }
+
+    .meta-label {
+      font-weight: 700;
+      color: #0d3b75;
+    }
+
+    .meta-sep {
+      font-weight: 700;
+      color: #0d3b75;
+      text-align: center;
+    }
+
+    .meta-val {
+      font-weight: 600;
+      color: #1e293b;
+      word-break: normal;
+    }
+
+    /* Earnings & Deductions Table */
+    .salary-table-section {
+      margin-top: 10px;
+    }
+
+    .salary-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+
+    .salary-table th {
+      background-color: #0d3b75;
+      color: #ffffff;
+      padding: 7px 10px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      font-size: 11.5px;
+      border: 1px solid #0d3b75;
+    }
+
+    .salary-table th.col-amount {
+      width: 105px;
+      text-align: right;
+    }
+
+    .salary-table th.col-desc {
+      text-align: left;
+    }
+
+    .salary-table td {
+      padding: 5.5px 10px;
+      border: 1px solid #cbd5e1;
+      font-size: 11.5px;
+      color: #1e293b;
+    }
+
+    .salary-table tr:nth-child(even) td {
+      background-color: #f8fafc;
+    }
+
+    .salary-table td.col-amount {
+      text-align: right;
+      font-weight: 600;
+      color: #0f172a;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .salary-table tr.total-row td {
+      background-color: #f1f5f9;
+      font-weight: 800;
+      color: #0d3b75;
+      border-top: 1.5px solid #0d3b75;
+      border-bottom: 1.5px solid #0d3b75;
+      font-size: 12px;
+      padding: 7px 10px;
+    }
+
+    /* Net Pay Summary Box */
+    .net-pay-box {
+      margin-top: 10px;
+      background: #f8fafc;
+      border: 1.5px solid #0d3b75;
+      border-radius: 4px;
+      padding: 10px 14px;
+    }
+
+    .net-pay-header {
+      font-size: 13.5px;
+      font-weight: 800;
+      color: #0d3b75;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 4px;
+    }
+
+    .net-pay-words {
+      font-size: 11.5px;
+      font-weight: 700;
+      color: #334155;
+      font-style: italic;
+    }
+
+    /* Signatures & Seal Row */
+    .bottom-auth-grid {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      margin-top: 14px;
+      padding-top: 8px;
+    }
+
+    .auth-sign-box {
+      width: 220px;
+      text-align: left;
+    }
+
+    .auth-title {
+      font-size: 11.5px;
+      font-weight: 700;
+      color: #0d3b75;
+      margin-bottom: 2px;
+    }
+
+    .sig-img-container {
+      height: 48px;
+      position: relative;
+      display: flex;
+      align-items: flex-end;
+    }
+
+    .ceo-sig-img {
+      height: 44px;
+      width: auto;
+      object-fit: contain;
+      position: absolute;
+      left: 5px;
+      bottom: 2px;
+    }
+
+    .auth-line {
+      width: 100%;
+      height: 1.2px;
+      background: #0d3b75;
+      margin-bottom: 5px;
+    }
+
+    .auth-name {
+      font-size: 12px;
+      font-weight: 700;
+      color: #0d3b75;
+    }
+
+    .auth-role {
+      font-size: 10.5px;
+      color: #475569;
+    }
+
+    /* Vector Seal in Center */
+    .auth-seal-box {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    /* Note and Disclaimer */
+    .disclaimer-bar {
+      border-top: 1px solid #cbd5e1;
+      margin-top: 12px;
+      padding-top: 6px;
+      font-size: 9.5px;
+      color: #64748b;
+      text-align: center;
+      line-height: 1.4;
+    }
+
+    /* Footer Slogan */
+    .page-footer {
+      text-align: center;
+      padding-top: 8px;
+    }
+
+    .footer-slogan {
+      font-size: 10.5px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      color: #1678b9;
+      text-transform: uppercase;
+    }
+
+    /* Print Setup */
+    @media print {
+      body {
+        background: transparent;
+        padding: 0;
+      }
+
+      .no-print {
+        display: none !important;
+      }
+
+      .page {
+        box-shadow: none;
+        margin: 0;
+        width: 210mm;
+        height: 297mm;
+        page-break-after: avoid;
+        page-break-inside: avoid;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Screen Toolbar -->
+  <div class="toolbar no-print">
+    <div class="toolbar-info">
+      <span>📄 <strong>KMS Pharmaceuticals — Payslip June 2026</strong> (A. Ashraf Ali)</span>
+    </div>
+    <div class="btn-group">
+      <button class="btn btn-secondary" onclick="toggleEdit()" id="editBtn">✏️ Edit Text</button>
+      <button class="btn btn-primary" onclick="window.print()">🖨️ Print / Save as PDF</button>
+    </div>
+  </div>
+
+  <!-- A4 Printable Sheet -->
+  <div class="page" id="slipDoc">
+    <div class="payslip-border-container">
+
+      <!-- Header Section -->
+      <div class="header-block">
+        <div class="header-logo">
+          <img src="logo.png" alt="KMS Pharmaceuticals Logo">
+        </div>
+        <div class="header-company-info">
+          <div class="company-title">KMS PHARMACEUTICALS</div>
+          <div class="company-address">6/24, KAYALAR LANE, C. PALLAVARAM</div>
+          <div class="company-meta">CHENNAI – 600 043 | www.kmspharmaceuticals.com</div>
+          <div class="company-meta">TAMILNADU - INDIA &nbsp;|&nbsp; Phone: +91 6380639179</div>
+        </div>
+      </div>
+
+      <!-- Payslip Title Banner -->
+      <div class="payslip-title-banner">
+        <div class="payslip-title">PAYSLIP FOR THE MONTH OF JUNE 2026</div>
+      </div>
+
+      <!-- Employee & Bank Info Details (Two Columns) -->
+      <div class="emp-meta-section">
+        
+        <!-- Left Column: Employee Info -->
+        <div class="meta-col meta-col-left">
+          <div class="meta-row">
+            <span class="meta-label">Name</span>
+            <span class="meta-sep">:</span>
+            <span class="meta-val">A. Ashraf Ali</span>
+          </div>
+          <div class="meta-row">
+            <span class="meta-label">Join Date</span>
+            <span class="meta-sep">:</span>
+            <span class="meta-val">11-01-2021</span>
+          </div>
+          <div class="meta-row">
+            <span class="meta-label">Designation</span>
+            <span class="meta-sep">:</span>
+            <span class="meta-val">Purchase Manager</span>
+          </div>
+          <div class="meta-row">
+            <span class="meta-label">Department</span>
+            <span class="meta-sep">:</span>
+            <span class="meta-val">Purchase</span>
+          </div>
+          <div class="meta-row">
+            <span class="meta-label">Effective Work Days</span>
+            <span class="meta-sep">:</span>
+            <span class="meta-val">26</span>
+          </div>
+          <div class="meta-row">
+            <span class="meta-label">Payment days</span>
+            <span class="meta-sep">:</span>
+            <span class="meta-val">26</span>
+          </div>
+        </div>
+
+        <!-- Right Column: Bank & Statutory Details -->
+        <div class="meta-col meta-col-right">
+          <div class="meta-row">
+            <span class="meta-label">Bank Name</span>
+            <span class="meta-sep">:</span>
+            <span class="meta-val">City Union Bank Pondicherry</span>
+          </div>
+          <div class="meta-row">
+            <span class="meta-label">Account No</span>
+            <span class="meta-sep">:</span>
+            <span class="meta-val">500101012194646</span>
+          </div>
+          <div class="meta-row">
+            <span class="meta-label">IFSC Code</span>
+            <span class="meta-sep">:</span>
+            <span class="meta-val">CIUB0000087</span>
+          </div>
+          <div class="meta-row">
+            <span class="meta-label">PF UAN</span>
+            <span class="meta-sep">:</span>
+            <span class="meta-val">102007983047</span>
+          </div>
+          <div class="meta-row">
+            <span class="meta-label">ESI No</span>
+            <span class="meta-sep">:</span>
+            <span class="meta-val">NIL</span>
+          </div>
+          <div class="meta-row">
+            <span class="meta-label">PAN No</span>
+            <span class="meta-sep">:</span>
+            <span class="meta-val">BWMPA2708N</span>
+          </div>
+          <div class="meta-row">
+            <span class="meta-label">LOP</span>
+            <span class="meta-sep">:</span>
+            <span class="meta-val">0</span>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Earnings & Deductions Breakdown Table -->
+      <div class="salary-table-section">
+        <table class="salary-table">
+          <thead>
+            <tr>
+              <th class="col-desc">Earnings</th>
+              <th class="col-amount">Actual</th>
+              <th class="col-desc">Deductions</th>
+              <th class="col-amount">Actual</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Basic</td>
+              <td class="col-amount">30000</td>
+              <td>Provident Fund</td>
+              <td class="col-amount">1800</td>
+            </tr>
+            <tr>
+              <td>House Rent Allowance</td>
+              <td class="col-amount">18000</td>
+              <td>Income Tax</td>
+              <td class="col-amount">0</td>
+            </tr>
+            <tr>
+              <td>Dearness Allowances</td>
+              <td class="col-amount">6600</td>
+              <td>Professional Tax</td>
+              <td class="col-amount">210</td>
+            </tr>
+            <tr>
+              <td>Conveyance &amp; Reimbursement</td>
+              <td class="col-amount">1800</td>
+              <td>Miscellaneous</td>
+              <td class="col-amount">0</td>
+            </tr>
+            <tr>
+              <td>Medical Reimbursement</td>
+              <td class="col-amount">2400</td>
+              <td>Loss Of Pay</td>
+              <td class="col-amount">0</td>
+            </tr>
+            <tr>
+              <td>Other Allowances</td>
+              <td class="col-amount">1200</td>
+              <td>ESI</td>
+              <td class="col-amount">0</td>
+            </tr>
+            <tr class="total-row">
+              <td>Total Earnings:</td>
+              <td class="col-amount">60000</td>
+              <td>Total Deductions:</td>
+              <td class="col-amount">2010</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Net Pay for the month summary -->
+      <div class="net-pay-box">
+        <div class="net-pay-header">
+          <span>Net Pay for the month (Total Earnings - Total Deductions):</span>
+          <span>= Rs. 57990</span>
+        </div>
+        <div class="net-pay-words">
+          (INR Fifty Seven Thousand, Nine Hundred And Ninety only.)
+        </div>
+      </div>
+
+      <!-- Signatures & Seal Row -->
+      <div class="bottom-auth-grid">
+        
+        <!-- Employee Acknowledgement -->
+        <div class="auth-sign-box">
+          <div class="auth-title">Employee Signature</div>
+          <div class="sig-img-container"></div>
+          <div class="auth-line"></div>
+          <div class="auth-name">A. Ashraf Ali</div>
+          <div class="auth-role">Purchase Manager</div>
+        </div>
+
+        <!-- Official Seal -->
+        <div class="auth-seal-box">
+          <svg width="105" height="105" viewBox="0 0 140 140">
+            <circle cx="70" cy="70" r="65" fill="none" stroke="#1678b9" stroke-width="2.5" />
+            <circle cx="70" cy="70" r="57" fill="none" stroke="#1678b9" stroke-width="1.2" />
+            <path id="seal-top-curve-slip" d="M 22 70 A 48 48 0 0 1 118 70" fill="none" />
+            <text font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="9.5" font-weight="800" fill="#0d3b75" letter-spacing="1.2">
+              <textPath href="#seal-top-curve-slip" startOffset="50%" text-anchor="middle">
+                KMS PHARMACEUTICALS
+              </textPath>
+            </text>
+            <text x="31" y="73" font-size="11" font-weight="bold" fill="#0d3b75" text-anchor="middle">★</text>
+            <text x="109" y="73" font-size="11" font-weight="bold" fill="#0d3b75" text-anchor="middle">★</text>
+            <text x="70" y="65" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="10" font-weight="800" fill="#0d3b75" text-anchor="middle" letter-spacing="1.2">
+              OFFICIAL
+            </text>
+            <text x="70" y="79" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="10" font-weight="800" fill="#0d3b75" text-anchor="middle" letter-spacing="1.8">
+              SEAL
+            </text>
+            <path id="seal-bottom-curve-slip" d="M 23 70 A 47 47 0 0 0 117 70" fill="none" />
+            <text font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="9" font-weight="700" fill="#0d3b75" letter-spacing="1.2">
+              <textPath href="#seal-bottom-curve-slip" startOffset="50%" text-anchor="middle">
+                CHENNAI – 600043
+              </textPath>
+            </text>
+          </svg>
+        </div>
+
+        <!-- Authorized Signatory (CEO) -->
+        <div class="auth-sign-box">
+          <div class="auth-title">For KMS Pharmaceuticals</div>
+          <div class="sig-img-container">
+            <img src="signature.png" alt="CEO Signature" class="ceo-sig-img">
+          </div>
+          <div class="auth-line"></div>
+          <div class="auth-name">K. Shahul Hameed</div>
+          <div class="auth-role">Chief Executive Officer (CEO)</div>
+        </div>
+
+      </div>
+
+      <!-- Disclaimer Note -->
+      <div class="disclaimer-bar">
+        This is a system generated payslip and does not require a physical signature. For any further queries please email us at info@kmspharmaceuticals.com
+      </div>
+
+    </div>
+
+    <!-- Bottom Footer Slogan -->
+    <div class="page-footer">
+      <div class="footer-slogan">TOGETHER WE BUILD A BETTER TOMORROW</div>
+    </div>
+
+  </div>
+
+  <script>
+    let isEditing = false;
+    function toggleEdit() {
+      isEditing = !isEditing;
+      const editBtn = document.getElementById('editBtn');
+      const contentRoot = document.getElementById('slipDoc');
+      contentRoot.contentEditable = isEditing ? 'true' : 'false';
+      
+      if (isEditing) {
+        editBtn.textContent = '💾 Done Editing';
+        editBtn.style.background = '#0d9488';
+        editBtn.style.color = '#ffffff';
+      } else {
+        editBtn.textContent = '✏️ Edit Text';
+        editBtn.style.background = '#f1f5f9';
+        editBtn.style.color = '#334155';
+      }
+    }
+  </script>
+</body>
+</html>
