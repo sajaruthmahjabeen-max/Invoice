@@ -506,7 +506,8 @@ document.addEventListener('DOMContentLoaded', () => {
     pendingDeletedInvoiceNos: new Set(),
     pendingDeletedClinicIds: new Set(),
     pendingDeletedProductIds: new Set(),
-    pendingStatusUpdates: {}
+    pendingStatusUpdates: {},
+    pendingBillsToSync: new Map()
   };
 
   const recalculateNextInvoiceNumber = () => {
@@ -534,6 +535,31 @@ document.addEventListener('DOMContentLoaded', () => {
   // Local Storage Synchronizer
   const loadLocalData = () => {
     try {
+      // 1. Restore pending deleted invoices
+      const savedPendingDeletedInvoices = localStorage.getItem('coverplus_pending_deleted_invoices');
+      if (savedPendingDeletedInvoices) {
+        try {
+          const arr = JSON.parse(savedPendingDeletedInvoices);
+          if (Array.isArray(arr)) state.pendingDeletedInvoiceNos = new Set(arr);
+        } catch (e) { }
+      }
+
+      // 2. Restore pending bills to sync (offline outbox)
+      const savedPendingBills = localStorage.getItem('coverplus_pending_bills_to_sync');
+      if (savedPendingBills) {
+        try {
+          const arr = JSON.parse(savedPendingBills);
+          if (Array.isArray(arr)) {
+            state.pendingBillsToSync = new Map();
+            arr.forEach(item => {
+              if (item && item.bill && item.bill.invoiceNo) {
+                state.pendingBillsToSync.set(item.bill.invoiceNo, item);
+              }
+            });
+          }
+        } catch (e) { }
+      }
+
       const savedClinics = localStorage.getItem('coverplus_clinics');
       if (savedClinics !== null) {
         try {
@@ -554,6 +580,20 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       } else {
         state.recentBills = [];
+      }
+
+      // Filter out any locally deleted bills
+      if (state.pendingDeletedInvoiceNos && state.pendingDeletedInvoiceNos.size > 0) {
+        state.recentBills = (state.recentBills || []).filter(b => b && b.invoiceNo && !state.pendingDeletedInvoiceNos.has(b.invoiceNo));
+      }
+
+      // Ensure any pending offline bills are present in state.recentBills
+      if (state.pendingBillsToSync && state.pendingBillsToSync.size > 0) {
+        state.pendingBillsToSync.forEach((val, invNo) => {
+          if (!state.recentBills.some(b => b.invoiceNo === invNo) && !state.pendingDeletedInvoiceNos.has(invNo)) {
+            state.recentBills.unshift(val.bill);
+          }
+        });
       }
 
       const savedProducts = localStorage.getItem('coverplus_products');
@@ -668,6 +708,12 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.setItem('coverplus_selected_clinic', state.selectedClinicId);
       }
       localStorage.setItem('coverplus_draft_items', JSON.stringify(state.items));
+      if (state.pendingDeletedInvoiceNos) {
+        localStorage.setItem('coverplus_pending_deleted_invoices', JSON.stringify(Array.from(state.pendingDeletedInvoiceNos)));
+      }
+      if (state.pendingBillsToSync) {
+        localStorage.setItem('coverplus_pending_bills_to_sync', JSON.stringify(Array.from(state.pendingBillsToSync.values())));
+      }
     } catch (e) {
       console.warn('Local storage save notice:', e);
     }
@@ -1391,12 +1437,21 @@ document.addEventListener('DOMContentLoaded', () => {
       itemsSnapshot: JSON.parse(JSON.stringify(validItems))
     };
 
-    // Instantly record locally
+    // Clear any pending deletion for this invoice number if previously set
+    if (state.pendingDeletedInvoiceNos) {
+      state.pendingDeletedInvoiceNos.delete(newBill.invoiceNo);
+    }
+
+    // Instantly record locally at the top
     state.recentBills.unshift(newBill);
     if (clinic) {
       clinic.totalOrders = (clinic.totalOrders || 0) + 1;
       clinic.totalBilled = (clinic.totalBilled || 0) + total;
     }
+
+    // Add to pending sync outbox until confirmed saved in Supabase
+    if (!state.pendingBillsToSync) state.pendingBillsToSync = new Map();
+    state.pendingBillsToSync.set(newBill.invoiceNo, { bill: newBill, clinic });
 
     // Automatically deduct billed quantities from product stock per size
     const stockUpdatedProducts = [];
@@ -1431,13 +1486,23 @@ document.addEventListener('DOMContentLoaded', () => {
     // Advance invoice counter for subsequent bill
     recalculateNextInvoiceNumber();
 
-    // Sync bill to Supabase Cloud
-    const cloudSuccess = await cloudSaveBill(newBill, clinic);
-    if (cloudSuccess) {
-      showToast(`🎉 Bill ${newBill.invoiceNo} saved & synced to cloud!`, 'success');
-    } else {
-      showToast(`💾 Bill ${newBill.invoiceNo} saved locally`, 'normal');
-    }
+    // Background sync to Supabase Cloud without delaying or losing local bill
+    (async () => {
+      try {
+        const cloudSuccess = await cloudSaveBill(newBill, clinic);
+        if (cloudSuccess) {
+          if (state.pendingBillsToSync) {
+            state.pendingBillsToSync.delete(newBill.invoiceNo);
+            saveLocalData();
+          }
+          showToast(`🎉 Bill ${newBill.invoiceNo} saved & synced to cloud!`, 'success');
+        } else {
+          showToast(`💾 Bill ${newBill.invoiceNo} saved locally (offline / pending cloud sync)`, 'normal');
+        }
+      } catch (err) {
+        showToast(`💾 Bill ${newBill.invoiceNo} saved locally`, 'normal');
+      }
+    })();
 
     return newBill;
   };
@@ -2539,6 +2604,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!billToDelete) return;
 
     state.pendingDeletedInvoiceNos.add(invoiceNo);
+    if (state.pendingBillsToSync) {
+      state.pendingBillsToSync.delete(invoiceNo);
+    }
 
     // Remove bill from local state
     state.recentBills = state.recentBills.filter(b => b.invoiceNo !== invoiceNo);
@@ -2583,12 +2651,17 @@ document.addEventListener('DOMContentLoaded', () => {
     renderClinicsPageView();
     recalculateNextInvoiceNumber();
 
+    showToast(`Invoice ${invoiceNo} deleted successfully`, 'normal');
+
     try {
-      await cloudDeleteBill(invoiceNo);
+      const ok = await cloudDeleteBill(invoiceNo);
+      if (ok) {
+        state.pendingDeletedInvoiceNos.delete(invoiceNo);
+        saveLocalData();
+      }
     } catch (err) {
       console.warn('Delete bill cloud error:', err);
     }
-    showToast(`Invoice ${invoiceNo} deleted successfully`, 'normal');
   };
 
   const renderProductsTable = () => {
@@ -2825,7 +2898,11 @@ document.addEventListener('DOMContentLoaded', () => {
   const cloudSaveBill = async (bill, clinic) => {
     try {
       if (clinic) {
-        await cloudSaveClinic(clinic);
+        try {
+          await cloudSaveClinic(clinic);
+        } catch (cErr) {
+          console.warn('Clinic save notice:', cErr);
+        }
       }
       let clinicUuid = (clinic && clinic.id && clinic.id.length === 36) ? clinic.id : null;
       const payload = {
@@ -2839,11 +2916,11 @@ document.addEventListener('DOMContentLoaded', () => {
         status: bill.status || 'Paid'
       };
       try {
-        await cloudDb.insert('bills', [payload]);
+        await cloudDb.upsert('bills', [payload], 'invoice_no');
       } catch (insertErr) {
-        console.warn('Initial bill insert failed, retrying without FK clinic_id:', insertErr);
+        console.warn('Initial bill upsert failed, retrying without FK clinic_id:', insertErr);
         payload.clinic_id = null;
-        await cloudDb.insert('bills', [payload]);
+        await cloudDb.upsert('bills', [payload], 'invoice_no');
       }
       if (clinic && clinic.id && clinic.id.length === 36) {
         try {
@@ -3102,25 +3179,58 @@ document.addEventListener('DOMContentLoaded', () => {
           });
 
         // Two-Way Sync: Preserve any local bills not in cloud yet
-        const localPendingBillsToUpload = [];
         (state.recentBills || []).forEach(localBill => {
           if (!localBill || !localBill.invoiceNo) return;
           if (state.pendingDeletedInvoiceNos.has(localBill.invoiceNo)) return;
           if (!cloudBillMap.has(localBill.invoiceNo)) {
             cloudBillMap.set(localBill.invoiceNo, localBill);
-            localPendingBillsToUpload.push(localBill);
+            if (!state.pendingBillsToSync) state.pendingBillsToSync = new Map();
+            if (!state.pendingBillsToSync.has(localBill.invoiceNo)) {
+              state.pendingBillsToSync.set(localBill.invoiceNo, { bill: localBill });
+            }
           }
         });
 
+        // Retain any pending offline bills waiting to sync
+        if (state.pendingBillsToSync && state.pendingBillsToSync.size > 0) {
+          state.pendingBillsToSync.forEach((val, invNo) => {
+            if (!state.pendingDeletedInvoiceNos.has(invNo) && !cloudBillMap.has(invNo)) {
+              cloudBillMap.set(invNo, val.bill);
+            }
+          });
+        }
+
         state.recentBills = Array.from(cloudBillMap.values());
+        // Sort bills so the latest invoice number is always at the top of the table
+        state.recentBills.sort((a, b) => {
+          return (b.invoiceNo || '').localeCompare(a.invoiceNo || '', undefined, { numeric: true });
+        });
         hasCloudData = true;
 
-        if (localPendingBillsToUpload.length > 0) {
+        // Process pending deletions against cloud
+        if (state.pendingDeletedInvoiceNos && state.pendingDeletedInvoiceNos.size > 0) {
+          for (const invNo of Array.from(state.pendingDeletedInvoiceNos)) {
+            try {
+              const ok = await cloudDeleteBill(invNo);
+              if (ok) {
+                state.pendingDeletedInvoiceNos.delete(invNo);
+                saveLocalData();
+              }
+            } catch (delErr) { }
+          }
+        }
+
+        // Process pending offline uploads to cloud
+        if (state.pendingBillsToSync && state.pendingBillsToSync.size > 0) {
           (async () => {
-            for (const lb of localPendingBillsToUpload) {
+            for (const [invNo, item] of Array.from(state.pendingBillsToSync.entries())) {
               try {
-                const c = state.clinics.find(cl => cl.id === lb.clinicId || cl.name === lb.clinicName);
-                await cloudSaveBill(lb, c);
+                const c = item.clinic || state.clinics.find(cl => cl.id === item.bill.clinicId || cl.name === item.bill.clinicName);
+                const ok = await cloudSaveBill(item.bill, c);
+                if (ok) {
+                  state.pendingBillsToSync.delete(invNo);
+                  saveLocalData();
+                }
               } catch (e) {
                 console.warn('Sync pending local bill notice:', e);
               }
@@ -3240,7 +3350,19 @@ document.addEventListener('DOMContentLoaded', () => {
       renderAttendancePageView();
     } catch (err) {
       console.warn('Cloud data fetch notice (using local storage):', err);
-      updateDbStatus(false, 'Local Storage');
+      updateDbStatus(false, 'Local Storage (Offline)');
+      renderClinicSelect();
+      renderRecentBillsTable();
+      renderAllBillsPageView();
+      renderClinicsPageView();
+      renderDashboardClinicsTable();
+      renderProductsTable();
+      updateProductsCatalogUI();
+      renderOutstandingTable();
+      renderSettingsUI();
+      updateStatsUI();
+      recalculateNextInvoiceNumber();
+      renderAttendancePageView();
     }
   };
 
@@ -4404,11 +4526,27 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Instant multi-device sync when window or tab gets focus
   window.addEventListener('focus', () => {
+    if (navigator.onLine !== false) {
+      cloudFetchAllData();
+    }
+  });
+
+  // Automatic online / offline network reconnection handlers
+  window.addEventListener('online', () => {
+    updateDbStatus(true, 'Supabase Cloud Live');
+    showToast('🌐 Internet restored — syncing with cloud...', 'normal');
     cloudFetchAllData();
   });
 
-  // Periodic background sync every 20 seconds
+  window.addEventListener('offline', () => {
+    updateDbStatus(false, 'Offline (Saved Locally)');
+    showToast('⚠️ Offline mode: bills are saved locally and will auto-sync when online.', 'normal');
+  });
+
+  // Periodic background sync every 20 seconds (when online)
   setInterval(() => {
-    cloudFetchAllData();
+    if (navigator.onLine !== false) {
+      cloudFetchAllData();
+    }
   }, 20000);
 });
