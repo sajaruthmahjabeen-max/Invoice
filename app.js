@@ -1178,10 +1178,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }).join('');
       }
 
+      const normalizeSize = (s) => (s || '').toString().toLowerCase().replace(/\s+/g, '').replace(/x/g, '*');
+      const itemNorm = normalizeSize(item.size);
+
       // Check stock for current item.size
-      let currentSizeKey = Object.keys(stocks).find(s => s.trim().toLowerCase() === (item.size || '').trim().toLowerCase());
+      let currentSizeKey = Object.keys(stocks).find(s => normalizeSize(s) === itemNorm);
       if (!currentSizeKey && sizeList.length > 0) {
-        currentSizeKey = sizeList.find(s => s.trim().toLowerCase() === (item.size || '').trim().toLowerCase());
+        currentSizeKey = sizeList.find(s => normalizeSize(s) === itemNorm);
       }
       const availableQty = (currentSizeKey && stocks[currentSizeKey] !== undefined)
         ? Number(stocks[currentSizeKey])
@@ -1453,6 +1456,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!state.pendingBillsToSync) state.pendingBillsToSync = new Map();
     state.pendingBillsToSync.set(newBill.invoiceNo, { bill: newBill, clinic });
 
+    // Helper to normalize size strings (e.g. '22*30', '22 * 30', '22x30')
+    const normalizeSize = (s) => (s || '').toString().toLowerCase().replace(/\s+/g, '').replace(/x/g, '*');
+
     // Automatically deduct billed quantities from product stock per size
     const stockUpdatedProducts = [];
     validItems.forEach(item => {
@@ -1460,12 +1466,18 @@ document.addEventListener('DOMContentLoaded', () => {
       if (prod) {
         if (!prod.stocks) prod.stocks = {};
         const sizeList = (prod.sizes || '').split(',').map(s => s.trim()).filter(Boolean);
-        let sizeKey = Object.keys(prod.stocks).find(s => s.trim().toLowerCase() === (item.size || '').trim().toLowerCase());
+        const itemNorm = normalizeSize(item.size);
+
+        // Find matching key in existing stocks
+        let sizeKey = Object.keys(prod.stocks).find(s => normalizeSize(s) === itemNorm);
         if (!sizeKey) {
-          sizeKey = sizeList.find(s => s.trim().toLowerCase() === (item.size || '').trim().toLowerCase()) || (sizeList.length > 0 ? sizeList[0] : (item.size || 'Standard'));
+          // If not in stocks, find in product defined sizes
+          sizeKey = sizeList.find(s => normalizeSize(s) === itemNorm) || (sizeList.length > 0 ? sizeList[0] : (item.size || 'Standard'));
         }
         const currentStock = prod.stocks[sizeKey] !== undefined ? Number(prod.stocks[sizeKey]) : 0;
-        prod.stocks[sizeKey] = Math.max(0, currentStock - Number(item.qty || 0));
+        const deductQty = Number(item.qty || 0);
+        prod.stocks[sizeKey] = Math.max(0, currentStock - deductQty);
+        console.log(`[Stock Deduction] ${prod.name} [${sizeKey}]: ${currentStock} - ${deductQty} = ${prod.stocks[sizeKey]}`);
         if (!stockUpdatedProducts.includes(prod)) stockUpdatedProducts.push(prod);
       }
     });
@@ -2620,18 +2632,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Restore stock for all items in the deleted bill
     if (Array.isArray(billToDelete.itemsSnapshot)) {
+      const normalizeSize = (s) => (s || '').toString().toLowerCase().replace(/\s+/g, '').replace(/x/g, '*');
       const stockRestoredProducts = [];
       billToDelete.itemsSnapshot.forEach(item => {
         const prod = state.products.find(p => p.name.trim().toLowerCase() === (item.name || '').trim().toLowerCase());
         if (prod) {
           if (!prod.stocks) prod.stocks = {};
           const sizeList = (prod.sizes || '').split(',').map(s => s.trim()).filter(Boolean);
-          let sizeKey = Object.keys(prod.stocks).find(s => s.trim().toLowerCase() === (item.size || '').trim().toLowerCase());
+          const itemNorm = normalizeSize(item.size);
+          let sizeKey = Object.keys(prod.stocks).find(s => normalizeSize(s) === itemNorm);
           if (!sizeKey) {
-            sizeKey = sizeList.find(s => s.trim().toLowerCase() === (item.size || '').trim().toLowerCase()) || (sizeList.length > 0 ? sizeList[0] : (item.size || 'Standard'));
+            sizeKey = sizeList.find(s => normalizeSize(s) === itemNorm) || (sizeList.length > 0 ? sizeList[0] : (item.size || 'Standard'));
           }
           const currentStock = prod.stocks[sizeKey] !== undefined ? Number(prod.stocks[sizeKey]) : 0;
-          prod.stocks[sizeKey] = currentStock + Number(item.qty || 0);
+          const restoreQty = Number(item.qty || 0);
+          prod.stocks[sizeKey] = currentStock + restoreQty;
+          console.log(`[Stock Restored] ${prod.name} [${sizeKey}]: ${currentStock} + ${restoreQty} = ${prod.stocks[sizeKey]}`);
           if (!stockRestoredProducts.includes(prod)) stockRestoredProducts.push(prod);
         }
       });
@@ -2959,6 +2975,7 @@ document.addEventListener('DOMContentLoaded', () => {
       try {
         await cloudDb.insert('products', [payload]);
       } catch (insertErr) {
+        console.warn('Cloud insert product with stocks warning, trying fallback:', insertErr);
         delete payload.stocks;
         await cloudDb.insert('products', [payload]);
       }
@@ -2980,7 +2997,9 @@ document.addEventListener('DOMContentLoaded', () => {
       };
       try {
         await cloudDb.update('products', payload, `id=eq.${product.id}`);
+        console.log(`[Cloud Product Update] Successfully saved stocks for ${product.name}:`, product.stocks);
       } catch (updateErr) {
+        console.warn('Cloud update product with stocks warning, checking schema:', updateErr);
         delete payload.stocks;
         await cloudDb.update('products', payload, `id=eq.${product.id}`);
       }
@@ -3261,13 +3280,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 rate = local.rate;
               }
             }
+            // Merge stocks: if local has an existing stock object with active entries, ensure local isn't stomped by empty/stale cloud
+            let finalStocks = p.stocks;
+            if (!finalStocks || Object.keys(finalStocks).length === 0) {
+              finalStocks = (local && local.stocks) ? local.stocks : {};
+            } else if (local && local.stocks && Object.keys(local.stocks).length > 0) {
+              // If local already has valid stock values, preserve them unless cloud is explicitly different and defined
+              finalStocks = Object.assign({}, local.stocks, p.stocks);
+            }
             return {
               id: p.id,
               name: p.name,
               sizes: p.sizes,
               spec: p.spec,
               rate: rate,
-              stocks: p.stocks || (local && local.stocks ? local.stocks : {})
+              stocks: finalStocks
             };
           });
 
@@ -3601,8 +3628,13 @@ document.addEventListener('DOMContentLoaded', () => {
       container.innerHTML = '<div style="font-size: 11.5px; color: #94A3B8; font-style: italic;">Enter sizes above separated by commas to set stock levels.</div>';
       return;
     }
+    const normalizeSize = (s) => (s || '').toString().toLowerCase().replace(/\s+/g, '').replace(/x/g, '*');
     container.innerHTML = sizes.map(size => {
-      const currentQty = (existingStocks && existingStocks[size] !== undefined) ? existingStocks[size] : 0;
+      const norm = normalizeSize(size);
+      let matchedKey = Object.keys(existingStocks || {}).find(k => normalizeSize(k) === norm);
+      const currentQty = (matchedKey && existingStocks[matchedKey] !== undefined) 
+        ? existingStocks[matchedKey] 
+        : (existingStocks && existingStocks[size] !== undefined ? existingStocks[size] : 0);
       return `
         <div class="stock-size-row">
           <span class="stock-size-badge">${size}</span>
