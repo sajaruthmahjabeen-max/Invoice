@@ -914,29 +914,39 @@
 
       <!-- Monthly Summary & Export -->
       <div class="table-card">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 12px;">
           <div>
             <h3 class="table-card-title" style="margin-bottom: 2px;">Monthly Attendance Overview</h3>
-            <span style="font-size: 12px; color: var(--text-muted);">Summary of total days present &amp; absent per staff member</span>
+            <span style="font-size: 12px; color: var(--text-muted);">Summary of total working days, attended days, absences, and Sundays per staff member</span>
           </div>
-          <div style="display: flex; gap: 8px; align-items: center;">
-            <input type="month" id="attendanceMonthPicker" class="attendance-date-input" style="padding: 6px 12px;">
-            <button type="button" class="btn-pill-reset" id="btnExportAttendanceCsv" style="font-size: 12px; padding: 7px 12px;">
-              📥 Export CSV
+          <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+            <input type="month" id="attendanceMonthPicker" class="attendance-date-input" style="padding: 6px 12px; font-weight: 700;">
+            <button type="button" class="btn-pill-generate" id="btnExportMonthlySummary" style="font-size: 12px; padding: 7px 14px;" title="Download complete monthly attendance summary for all staff">
+              📊 Download Monthly Report (Summary)
+            </button>
+            <button type="button" class="btn-pill-reset" id="btnExportAttendanceCsv" style="font-size: 12px; padding: 7px 12px;" title="Download day-by-day attendance sheet">
+              📄 Day-Wise Sheet (CSV)
             </button>
           </div>
+        </div>
+
+        <!-- Dynamic Monthly KPI Stats Banner -->
+        <div id="attendanceMonthStatsBanner" style="display: flex; gap: 16px; margin-bottom: 16px; padding: 12px 18px; background: #F8FAFC; border-radius: 8px; border: 1px solid #E2E8F0; font-size: 12.5px; color: #475569; flex-wrap: wrap; align-items: center;">
+          <!-- Dynamically populated monthly stats -->
         </div>
 
         <div class="data-table-container">
           <table class="clean-table">
             <thead>
               <tr>
-                <th style="width: 70px; text-align: center;">S.No</th>
+                <th style="width: 50px; text-align: center;">S.No</th>
                 <th>Employee Name</th>
                 <th>Designation / Role</th>
-                <th style="text-align: center;">Total Present</th>
-                <th style="text-align: center;">Total Absent</th>
-                <th style="text-align: center;">Half-Day / Leave</th>
+                <th style="text-align: center;">Working Days</th>
+                <th style="text-align: center; color: #059669;">Present (Came)</th>
+                <th style="text-align: center; color: #DC2626;">Absent</th>
+                <th style="text-align: center; color: #D97706;">Half Day / Leave</th>
+                <th style="text-align: center; color: #2563EB;">Sundays (Off)</th>
                 <th style="text-align: center;">Attendance %</th>
               </tr>
             </thead>

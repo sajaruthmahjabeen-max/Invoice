@@ -506,9 +506,13 @@ document.addEventListener('DOMContentLoaded', () => {
     pendingDeletedInvoiceNos: new Set(),
     pendingDeletedClinicIds: new Set(),
     pendingDeletedProductIds: new Set(),
+    pendingDeletedEmployeeIds: new Set(),
     pendingStatusUpdates: {},
     pendingBillsToSync: new Map()
   };
+
+  let isCloudMutating = false;
+  let isGeneratingBill = false;
 
   const recalculateNextInvoiceNumber = () => {
     const prefix = state.settings.invoicePrefix || 'INV-2026-';
@@ -535,12 +539,33 @@ document.addEventListener('DOMContentLoaded', () => {
   // Local Storage Synchronizer
   const loadLocalData = () => {
     try {
-      // 1. Restore pending deleted invoices
+      // 1. Restore pending deleted sets
       const savedPendingDeletedInvoices = localStorage.getItem('coverplus_pending_deleted_invoices');
       if (savedPendingDeletedInvoices) {
         try {
           const arr = JSON.parse(savedPendingDeletedInvoices);
           if (Array.isArray(arr)) state.pendingDeletedInvoiceNos = new Set(arr);
+        } catch (e) { }
+      }
+      const savedPendingDeletedClinics = localStorage.getItem('coverplus_pending_deleted_clinics');
+      if (savedPendingDeletedClinics) {
+        try {
+          const arr = JSON.parse(savedPendingDeletedClinics);
+          if (Array.isArray(arr)) state.pendingDeletedClinicIds = new Set(arr);
+        } catch (e) { }
+      }
+      const savedPendingDeletedProducts = localStorage.getItem('coverplus_pending_deleted_products');
+      if (savedPendingDeletedProducts) {
+        try {
+          const arr = JSON.parse(savedPendingDeletedProducts);
+          if (Array.isArray(arr)) state.pendingDeletedProductIds = new Set(arr);
+        } catch (e) { }
+      }
+      const savedPendingDeletedEmployees = localStorage.getItem('coverplus_pending_deleted_employees');
+      if (savedPendingDeletedEmployees) {
+        try {
+          const arr = JSON.parse(savedPendingDeletedEmployees);
+          if (Array.isArray(arr)) state.pendingDeletedEmployeeIds = new Set(arr);
         } catch (e) { }
       }
 
@@ -710,6 +735,15 @@ document.addEventListener('DOMContentLoaded', () => {
       localStorage.setItem('coverplus_draft_items', JSON.stringify(state.items));
       if (state.pendingDeletedInvoiceNos) {
         localStorage.setItem('coverplus_pending_deleted_invoices', JSON.stringify(Array.from(state.pendingDeletedInvoiceNos)));
+      }
+      if (state.pendingDeletedClinicIds) {
+        localStorage.setItem('coverplus_pending_deleted_clinics', JSON.stringify(Array.from(state.pendingDeletedClinicIds)));
+      }
+      if (state.pendingDeletedProductIds) {
+        localStorage.setItem('coverplus_pending_deleted_products', JSON.stringify(Array.from(state.pendingDeletedProductIds)));
+      }
+      if (state.pendingDeletedEmployeeIds) {
+        localStorage.setItem('coverplus_pending_deleted_employees', JSON.stringify(Array.from(state.pendingDeletedEmployeeIds)));
       }
       if (state.pendingBillsToSync) {
         localStorage.setItem('coverplus_pending_bills_to_sync', JSON.stringify(Array.from(state.pendingBillsToSync.values())));
@@ -1400,106 +1434,120 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   const generateBillAction = async (silent = false) => {
-    if (!state.selectedClinicId) {
-      if (!silent) {
-        showToast('Please select a Clinic / Hospital', 'error');
-        if (selectClinic) selectClinic.focus();
-      }
-      return null;
+    if (isGeneratingBill) return null;
+    isGeneratingBill = true;
+    const btnGen = document.getElementById('btnGenerateBill');
+    const origBtnText = btnGen ? btnGen.textContent : '';
+    if (btnGen) {
+      btnGen.disabled = true;
+      btnGen.textContent = 'Saving Bill...';
     }
 
-    const validItems = state.items.filter(i => (i.name || '').trim() !== '' && Number(i.qty) > 0);
-    if (validItems.length === 0) {
-      if (!silent) showToast('Please add at least one valid item name', 'error');
-      return null;
-    }
-
-    const total = validItems.reduce((sum, i) => sum + (Number(i.qty) * Number(i.rate)), 0);
-    if (total <= 0) {
-      if (!silent) showToast('Please enter item rate to calculate total', 'error');
-      return null;
-    }
-
-    const clinic = state.clinics.find(c => c.id === state.selectedClinicId);
-
-    // Ensure we have the latest unique invoice number
-    recalculateNextInvoiceNumber();
-
-    const selectStatusEl = document.getElementById('selectInitialBillStatus');
-    const chosenStatus = selectStatusEl ? selectStatusEl.value : 'Paid';
-
-    const newBill = {
-      id: generateUUID(),
-      invoiceNo: state.invoiceNumber,
-      clinicName: clinic ? clinic.name : 'Selected Clinic',
-      clinicId: clinic ? clinic.id : null,
-      date: state.invoiceDate,
-      itemsSummary: validItems.map(i => `${i.name} (${i.qty})`).join(', '),
-      amount: total,
-      status: chosenStatus || 'Paid',
-      itemsSnapshot: JSON.parse(JSON.stringify(validItems))
-    };
-
-    // Clear any pending deletion for this invoice number if previously set
-    if (state.pendingDeletedInvoiceNos) {
-      state.pendingDeletedInvoiceNos.delete(newBill.invoiceNo);
-    }
-
-    // Instantly record locally at the top
-    state.recentBills.unshift(newBill);
-    if (clinic) {
-      clinic.totalOrders = (clinic.totalOrders || 0) + 1;
-      clinic.totalBilled = (clinic.totalBilled || 0) + total;
-    }
-
-    // Add to pending sync outbox until confirmed saved in Supabase
-    if (!state.pendingBillsToSync) state.pendingBillsToSync = new Map();
-    state.pendingBillsToSync.set(newBill.invoiceNo, { bill: newBill, clinic });
-
-    // Helper to normalize size strings (e.g. '22*30', '22 * 30', '22x30')
-    const normalizeSize = (s) => (s || '').toString().toLowerCase().replace(/\s+/g, '').replace(/x/g, '*');
-
-    // Automatically deduct billed quantities from product stock per size
-    const stockUpdatedProducts = [];
-    validItems.forEach(item => {
-      const prod = state.products.find(p => (p.name || '').trim().toLowerCase() === (item.name || '').trim().toLowerCase());
-      if (prod) {
-        if (!prod.stocks) prod.stocks = {};
-        const sizeList = (prod.sizes || '').split(',').map(s => s.trim()).filter(Boolean);
-        const itemNorm = normalizeSize(item.size);
-
-        // Find matching key in existing stocks
-        let sizeKey = Object.keys(prod.stocks).find(s => normalizeSize(s) === itemNorm);
-        if (!sizeKey) {
-          // If not in stocks, find in product defined sizes
-          sizeKey = sizeList.find(s => normalizeSize(s) === itemNorm) || (sizeList.length > 0 ? sizeList[0] : (item.size || 'Standard'));
+    try {
+      if (!state.selectedClinicId) {
+        if (!silent) {
+          showToast('Please select a Clinic / Hospital', 'error');
+          if (selectClinic) selectClinic.focus();
         }
-        const currentStock = prod.stocks[sizeKey] !== undefined ? Number(prod.stocks[sizeKey]) : 0;
-        const deductQty = Number(item.qty || 0);
-        prod.stocks[sizeKey] = Math.max(0, currentStock - deductQty);
-        console.log(`[Stock Deduction] ${prod.name} [${sizeKey}]: ${currentStock} - ${deductQty} = ${prod.stocks[sizeKey]}`);
-        if (!stockUpdatedProducts.includes(prod)) stockUpdatedProducts.push(prod);
+        return null;
       }
-    });
 
-    // Async sync updated stock to cloud
-    stockUpdatedProducts.forEach(prod => {
-      cloudUpdateProduct(prod);
-    });
+      const validItems = state.items.filter(i => (i.name || '').trim() !== '' && Number(i.qty) > 0);
+      if (validItems.length === 0) {
+        if (!silent) showToast('Please add at least one valid item name', 'error');
+        return null;
+      }
 
-    saveLocalData();
-    updateStatsUI();
-    renderRecentBillsTable();
-    renderAllBillsPageView();
-    renderClinicsPageView();
-    renderProductsTable();
-    updateProductsCatalogUI();
+      const total = validItems.reduce((sum, i) => sum + (Number(i.qty) * Number(i.rate)), 0);
+      if (total <= 0) {
+        if (!silent) showToast('Please enter item rate to calculate total', 'error');
+        return null;
+      }
 
-    // Advance invoice counter for subsequent bill
-    recalculateNextInvoiceNumber();
+      const clinic = state.clinics.find(c => c.id === state.selectedClinicId);
 
-    // Background sync to Supabase Cloud without delaying or losing local bill
-    (async () => {
+      // Ensure we have the latest unique invoice number
+      recalculateNextInvoiceNumber();
+
+      const selectStatusEl = document.getElementById('selectInitialBillStatus');
+      const chosenStatus = selectStatusEl ? selectStatusEl.value : 'Paid';
+
+      const newBill = {
+        id: generateUUID(),
+        invoiceNo: state.invoiceNumber,
+        clinicName: clinic ? clinic.name : 'Selected Clinic',
+        clinicId: clinic ? clinic.id : null,
+        date: state.invoiceDate,
+        itemsSummary: validItems.map(i => `${i.name} (${i.qty})`).join(', '),
+        amount: total,
+        status: chosenStatus || 'Paid',
+        itemsSnapshot: JSON.parse(JSON.stringify(validItems))
+      };
+
+      // Clear any pending deletion for this invoice number if previously set
+      if (state.pendingDeletedInvoiceNos) {
+        state.pendingDeletedInvoiceNos.delete(newBill.invoiceNo);
+      }
+
+      // Instantly record locally at the top
+      state.recentBills.unshift(newBill);
+      if (clinic) {
+        clinic.totalOrders = (clinic.totalOrders || 0) + 1;
+        clinic.totalBilled = (clinic.totalBilled || 0) + total;
+      }
+
+      // Add to pending sync outbox until confirmed saved in Supabase
+      if (!state.pendingBillsToSync) state.pendingBillsToSync = new Map();
+      state.pendingBillsToSync.set(newBill.invoiceNo, { bill: newBill, clinic });
+
+      // Helper to normalize size strings (e.g. '22*30', '22 * 30', '22x30')
+      const normalizeSize = (s) => (s || '').toString().toLowerCase().replace(/\s+/g, '').replace(/x/g, '*');
+
+      // Automatically deduct billed quantities from product stock per size
+      const stockUpdatedProducts = [];
+      validItems.forEach(item => {
+        const prod = state.products.find(p => (p.name || '').trim().toLowerCase() === (item.name || '').trim().toLowerCase());
+        if (prod) {
+          if (!prod.stocks) prod.stocks = {};
+          const sizeList = (prod.sizes || '').split(',').map(s => s.trim()).filter(Boolean);
+          const itemNorm = normalizeSize(item.size);
+
+          // Find matching key in existing stocks
+          let sizeKey = Object.keys(prod.stocks).find(s => normalizeSize(s) === itemNorm);
+          if (!sizeKey) {
+            // If not in stocks, find in product defined sizes
+            sizeKey = sizeList.find(s => normalizeSize(s) === itemNorm) || (sizeList.length > 0 ? sizeList[0] : (item.size || 'Standard'));
+          }
+          const currentStock = prod.stocks[sizeKey] !== undefined ? Number(prod.stocks[sizeKey]) : 0;
+          const deductQty = Number(item.qty || 0);
+          prod.stocks[sizeKey] = Math.max(0, currentStock - deductQty);
+          console.log(`[Stock Deduction] ${prod.name} [${sizeKey}]: ${currentStock} - ${deductQty} = ${prod.stocks[sizeKey]}`);
+          if (!stockUpdatedProducts.includes(prod)) stockUpdatedProducts.push(prod);
+        }
+      });
+
+      // Async sync updated stock to cloud
+      stockUpdatedProducts.forEach(prod => {
+        cloudUpdateProduct(prod);
+      });
+
+      // Reset drafted items so subsequent Print or PDF clicks don't re-create duplicate bills
+      state.items = [{ id: Date.now(), name: '', size: 'Medium', qty: 1, rate: 0 }];
+      localStorage.removeItem('coverplus_draft_items');
+      calculateAndRenderItems();
+
+      saveLocalData();
+      updateStatsUI();
+      renderRecentBillsTable();
+      renderAllBillsPageView();
+      renderClinicsPageView();
+      renderProductsTable();
+      updateProductsCatalogUI();
+
+      // Advance invoice counter for subsequent bill
+      recalculateNextInvoiceNumber();
+
+      // Immediate await sync to Supabase Cloud
       try {
         const cloudSuccess = await cloudSaveBill(newBill, clinic);
         if (cloudSuccess) {
@@ -1507,16 +1555,22 @@ document.addEventListener('DOMContentLoaded', () => {
             state.pendingBillsToSync.delete(newBill.invoiceNo);
             saveLocalData();
           }
-          showToast(`🎉 Bill ${newBill.invoiceNo} saved & synced to cloud!`, 'success');
+          if (!silent) showToast(`🎉 Bill ${newBill.invoiceNo} saved & synced to cloud!`, 'success');
         } else {
-          showToast(`💾 Bill ${newBill.invoiceNo} saved locally (offline / pending cloud sync)`, 'normal');
+          if (!silent) showToast(`💾 Bill ${newBill.invoiceNo} saved locally (offline / pending cloud sync)`, 'normal');
         }
       } catch (err) {
-        showToast(`💾 Bill ${newBill.invoiceNo} saved locally`, 'normal');
+        if (!silent) showToast(`💾 Bill ${newBill.invoiceNo} saved locally`, 'normal');
       }
-    })();
 
-    return newBill;
+      return newBill;
+    } finally {
+      if (btnGen) {
+        btnGen.disabled = false;
+        btnGen.textContent = origBtnText || 'Save & Generate Bill';
+      }
+      isGeneratingBill = false;
+    }
   };
   window.generateBillAction = generateBillAction;
 
@@ -2211,10 +2265,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (invoiceNo) {
       bill = state.recentBills.find(b => b.invoiceNo === invoiceNo);
     } else {
-      // Auto-save bill if user is drafting a valid bill on the create bill screen
-      const validItems = state.items.filter(i => (i.name || '').trim() !== '' && Number(i.qty) > 0);
-      if (state.selectedClinicId && validItems.length > 0) {
-        bill = await generateBillAction(false);
+      if (state.recentBills && state.recentBills.length > 0) {
+        bill = state.recentBills[0];
       }
     }
     // Populate preview first so HTML is up to date
@@ -2502,10 +2554,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (invoiceNo) {
       bill = state.recentBills.find(b => b.invoiceNo === invoiceNo);
     } else {
-      // Auto-save bill if user is drafting a valid bill on the create bill screen
-      const validItems = state.items.filter(i => (i.name || '').trim() !== '' && Number(i.qty) > 0);
-      if (state.selectedClinicId && validItems.length > 0) {
-        bill = await generateBillAction(false);
+      if (state.recentBills && state.recentBills.length > 0) {
+        bill = state.recentBills[0];
       }
     }
     window.populateInvoicePreview(bill);
@@ -2592,6 +2642,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   window.deleteClinic = async (clinicId) => {
     if (!confirm('Are you sure you want to remove this clinic facility?')) return;
+    if (!state.pendingDeletedClinicIds) state.pendingDeletedClinicIds = new Set();
     state.pendingDeletedClinicIds.add(clinicId);
     state.clinics = state.clinics.filter(c => c.id !== clinicId);
     if (state.selectedClinicId === clinicId) {
@@ -2601,12 +2652,10 @@ document.addEventListener('DOMContentLoaded', () => {
     renderClinicSelect();
     renderClinicsPageView();
     updateStatsUI();
-    try {
-      await cloudDeleteClinic(clinicId);
-    } catch (err) {
-      console.warn('Delete clinic cloud notice:', err);
-    }
     showToast('Clinic facility deleted', 'normal');
+    await cloudDeleteClinic(clinicId);
+    state.pendingDeletedClinicIds.delete(clinicId);
+    saveLocalData();
   };
 
   window.deleteBill = async (invoiceNo) => {
@@ -2615,6 +2664,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const billToDelete = state.recentBills.find(b => b.invoiceNo === invoiceNo);
     if (!billToDelete) return;
 
+    if (!state.pendingDeletedInvoiceNos) state.pendingDeletedInvoiceNos = new Set();
     state.pendingDeletedInvoiceNos.add(invoiceNo);
     if (state.pendingBillsToSync) {
       state.pendingBillsToSync.delete(invoiceNo);
@@ -2668,16 +2718,9 @@ document.addEventListener('DOMContentLoaded', () => {
     recalculateNextInvoiceNumber();
 
     showToast(`Invoice ${invoiceNo} deleted successfully`, 'normal');
-
-    try {
-      const ok = await cloudDeleteBill(invoiceNo);
-      if (ok) {
-        state.pendingDeletedInvoiceNos.delete(invoiceNo);
-        saveLocalData();
-      }
-    } catch (err) {
-      console.warn('Delete bill cloud error:', err);
-    }
+    await cloudDeleteBill(invoiceNo);
+    state.pendingDeletedInvoiceNos.delete(invoiceNo);
+    saveLocalData();
   };
 
   const renderProductsTable = () => {
@@ -2771,17 +2814,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
   window.deleteProduct = async (productId) => {
     if (!confirm('Are you sure you want to remove this product?')) return;
+    if (!state.pendingDeletedProductIds) state.pendingDeletedProductIds = new Set();
     state.pendingDeletedProductIds.add(productId);
     state.products = state.products.filter(p => p.id !== productId);
     saveLocalData();
     renderProductsTable();
     updateProductsCatalogUI();
-    try {
-      await cloudDeleteProduct(productId);
-    } catch (err) {
-      console.warn('Delete product cloud notice:', err);
-    }
     showToast('Product removed', 'normal');
+    await cloudDeleteProduct(productId);
+    state.pendingDeletedProductIds.delete(productId);
+    saveLocalData();
   };
 
   const updateProductsCatalogUI = () => {
@@ -2963,82 +3005,89 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   const cloudSaveProduct = async (product) => {
+    isCloudMutating = true;
     try {
       const payload = {
         id: product.id,
         name: product.name,
         sizes: product.sizes,
-        spec: product.spec,
+        spec: product.spec || '',
         rate: product.rate,
         stocks: product.stocks || {}
       };
-      try {
-        await cloudDb.insert('products', [payload]);
-      } catch (insertErr) {
-        console.warn('Cloud insert product with stocks warning, trying fallback:', insertErr);
-        delete payload.stocks;
-        await cloudDb.insert('products', [payload]);
-      }
+      await cloudDb.upsert('products', [payload], 'id');
       return true;
     } catch (err) {
       console.error('Cloud save product error:', err);
       return false;
+    } finally {
+      isCloudMutating = false;
     }
   };
 
   const cloudUpdateProduct = async (product) => {
+    isCloudMutating = true;
     try {
       const payload = {
+        id: product.id,
         name: product.name,
         sizes: product.sizes,
-        spec: product.spec,
+        spec: product.spec || '',
         rate: product.rate,
         stocks: product.stocks || {}
       };
-      try {
-        await cloudDb.update('products', payload, `id=eq.${product.id}`);
-        console.log(`[Cloud Product Update] Successfully saved stocks for ${product.name}:`, product.stocks);
-      } catch (updateErr) {
-        console.warn('Cloud update product with stocks warning, checking schema:', updateErr);
-        delete payload.stocks;
-        await cloudDb.update('products', payload, `id=eq.${product.id}`);
-      }
+      await cloudDb.upsert('products', [payload], 'id');
       return true;
     } catch (err) {
       console.error('Cloud update product error:', err);
       return false;
+    } finally {
+      isCloudMutating = false;
     }
   };
 
   const cloudDeleteProduct = async (productId) => {
+    isCloudMutating = true;
     try {
-      await cloudDb.delete('products', `id=eq.${productId}`);
+      if (productId) {
+        await cloudDb.delete('products', `id=eq.${productId}`);
+      }
       return true;
     } catch (err) {
       console.error('Cloud delete product error:', err);
       return false;
+    } finally {
+      isCloudMutating = false;
     }
   };
 
   const cloudDeleteClinic = async (clinicId) => {
+    isCloudMutating = true;
     try {
-      if (clinicId && clinicId.length === 36) {
+      if (clinicId) {
         await cloudDb.delete('clinics', `id=eq.${clinicId}`);
       }
       return true;
     } catch (err) {
       console.error('Cloud delete clinic error:', err);
       return false;
+    } finally {
+      isCloudMutating = false;
     }
   };
 
   const cloudDeleteBill = async (invoiceNo) => {
+    isCloudMutating = true;
     try {
-      await cloudDb.delete('bills', `invoice_no=eq.${invoiceNo}`);
+      if (invoiceNo) {
+        await cloudDb.delete('bills', `invoice_no=eq.${invoiceNo}`);
+      }
       return true;
     } catch (err) {
       console.error('Cloud delete bill error:', err);
       return false;
+    } finally {
+      isCloudMutating = false;
     }
   };
 
@@ -3068,6 +3117,7 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   const cloudSaveEmployee = async (employee) => {
+    isCloudMutating = true;
     try {
       const payload = {
         id: employee.id,
@@ -3081,19 +3131,26 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (err) {
       console.warn('Cloud save employee notice (local saved):', err);
       return false;
+    } finally {
+      isCloudMutating = false;
     }
   };
 
   const cloudDeleteEmployee = async (employeeId) => {
+    isCloudMutating = true;
     try {
-      if (employeeId && employeeId.length === 36) {
+      if (employeeId) {
+        try {
+          await cloudDb.delete('attendance', `employee_id=eq.${employeeId}`);
+        } catch (attErr) {}
         await cloudDb.delete('employees', `id=eq.${employeeId}`);
-        await cloudDb.delete('attendance', `employee_id=eq.${employeeId}`);
       }
       return true;
     } catch (err) {
       console.warn('Cloud delete employee notice:', err);
       return false;
+    } finally {
+      isCloudMutating = false;
     }
   };
 
@@ -3141,12 +3198,13 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   const cloudFetchAllData = async () => {
+    if (isCloudMutating) return;
     try {
       const [dbClinics, dbBills, dbProducts, dbSettings, dbEmployees, dbAttendance] = await Promise.all([
-        cloudDb.get('clinics'),
-        cloudDb.get('bills', 'select=*&order=created_at.desc'),
-        cloudDb.get('products'),
-        cloudDb.get('company_settings', 'id=eq.1'),
+        cloudDb.get('clinics').catch(() => null),
+        cloudDb.get('bills', 'select=*&order=created_at.desc').catch(() => null),
+        cloudDb.get('products').catch(() => null),
+        cloudDb.get('company_settings', 'id=eq.1').catch(() => null),
         cloudDb.get('employees').catch(() => null),
         cloudDb.get('attendance').catch(() => null)
       ]);
@@ -3164,17 +3222,7 @@ document.addEventListener('DOMContentLoaded', () => {
             totalBilled: parseFloat(c.total_billed) || 0,
             totalOrders: 0
           }));
-
-        // Preserve local clinics that haven't synced yet
-        const clinicMap = new Map();
-        cloudClinics.forEach(c => clinicMap.set(c.id, c));
-        (state.clinics || []).forEach(lc => {
-          if (!lc || !lc.id || state.pendingDeletedClinicIds.has(lc.id)) return;
-          if (!clinicMap.has(lc.id)) {
-            clinicMap.set(lc.id, lc);
-          }
-        });
-        state.clinics = Array.from(clinicMap.values());
+        state.clinics = cloudClinics;
         hasCloudData = true;
       }
 
@@ -3197,20 +3245,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
           });
 
-        // Two-Way Sync: Preserve any local bills not in cloud yet
-        (state.recentBills || []).forEach(localBill => {
-          if (!localBill || !localBill.invoiceNo) return;
-          if (state.pendingDeletedInvoiceNos.has(localBill.invoiceNo)) return;
-          if (!cloudBillMap.has(localBill.invoiceNo)) {
-            cloudBillMap.set(localBill.invoiceNo, localBill);
-            if (!state.pendingBillsToSync) state.pendingBillsToSync = new Map();
-            if (!state.pendingBillsToSync.has(localBill.invoiceNo)) {
-              state.pendingBillsToSync.set(localBill.invoiceNo, { bill: localBill });
-            }
-          }
-        });
-
-        // Retain any pending offline bills waiting to sync
+        // Retain any pending offline bills waiting to sync (without resurrecting deleted ones)
         if (state.pendingBillsToSync && state.pendingBillsToSync.size > 0) {
           state.pendingBillsToSync.forEach((val, invNo) => {
             if (!state.pendingDeletedInvoiceNos.has(invNo) && !cloudBillMap.has(invNo)) {
@@ -3268,45 +3303,16 @@ document.addEventListener('DOMContentLoaded', () => {
         const cloudProducts = dbProducts
           .filter(p => !state.pendingDeletedProductIds.has(p.id))
           .map(p => {
-            const local = (state.products || []).find(lp => lp.id === p.id);
-            let rate = parseFloat(p.rate) || 0;
-            // Guard: If local product has higher decimal precision than cloud (e.g. local 0.536 vs cloud 0.54), keep local rate!
-            if (local && typeof local.rate === 'number') {
-              const localStr = local.rate.toString();
-              const cloudStr = rate.toString();
-              const localDec = (localStr.split('.')[1] || '').length;
-              const cloudDec = (cloudStr.split('.')[1] || '').length;
-              if (localDec > cloudDec && Math.abs(local.rate - rate) < 0.01) {
-                rate = local.rate;
-              }
-            }
-            // Merge stocks: if local has an existing stock object with active entries, ensure local isn't stomped by empty/stale cloud
-            let finalStocks = p.stocks;
-            if (!finalStocks || Object.keys(finalStocks).length === 0) {
-              finalStocks = (local && local.stocks) ? local.stocks : {};
-            } else if (local && local.stocks && Object.keys(local.stocks).length > 0) {
-              // If local already has valid stock values, preserve them unless cloud is explicitly different and defined
-              finalStocks = Object.assign({}, local.stocks, p.stocks);
-            }
             return {
               id: p.id,
               name: p.name,
               sizes: p.sizes,
               spec: p.spec,
-              rate: rate,
-              stocks: finalStocks
+              rate: parseFloat(p.rate) || 0,
+              stocks: p.stocks || {}
             };
           });
-
-        const prodMap = new Map();
-        cloudProducts.forEach(p => prodMap.set(p.id, p));
-        (state.products || []).forEach(lp => {
-          if (!lp || !lp.id || state.pendingDeletedProductIds.has(lp.id)) return;
-          if (!prodMap.has(lp.id)) {
-            prodMap.set(lp.id, lp);
-          }
-        });
-        state.products = Array.from(prodMap.values());
+        state.products = cloudProducts;
         hasCloudData = true;
       }
 
@@ -3331,12 +3337,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // Sync employees from Supabase Cloud
       if (Array.isArray(dbEmployees)) {
-        state.employees = dbEmployees.map(e => ({
-          id: e.id,
-          name: e.name,
-          role: e.role || '',
-          phone: e.phone || ''
-        }));
+        state.employees = dbEmployees
+          .filter(e => !state.pendingDeletedEmployeeIds || !state.pendingDeletedEmployeeIds.has(e.id))
+          .map(e => ({
+            id: e.id,
+            name: e.name,
+            role: e.role || '',
+            phone: e.phone || ''
+          }));
         hasCloudData = true;
       }
 
@@ -4009,6 +4017,29 @@ document.addEventListener('DOMContentLoaded', () => {
     return (words[0][0] + words[1][0]).toUpperCase();
   };
 
+  const getMonthCalendarInfo = (yearMonthStr) => {
+    if (!yearMonthStr || !yearMonthStr.includes('-')) {
+      const now = new Date();
+      yearMonthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    }
+    const [yStr, mStr] = yearMonthStr.split('-');
+    const year = parseInt(yStr, 10);
+    const month = parseInt(mStr, 10);
+    const daysInMonth = new Date(year, month, 0).getDate();
+    let sundays = 0;
+    let workingDays = 0;
+    for (let day = 1; day <= daysInMonth; day++) {
+      const d = new Date(year, month - 1, day);
+      if (d.getDay() === 0) {
+        sundays++;
+      } else {
+        workingDays++;
+      }
+    }
+    const monthName = new Date(year, month - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    return { year, month, daysInMonth, sundays, workingDays, monthName, yearMonthStr };
+  };
+
   const ensureDailyAttendanceList = (dateStr) => {
     if (!state.attendanceRecords[dateStr]) {
       state.attendanceRecords[dateStr] = [];
@@ -4020,7 +4051,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const currentRecords = state.attendanceRecords[dateStr];
     state.employees.forEach(emp => {
-      let found = currentRecords.find(r => r.employeeId === emp.id);
+      let found = currentRecords.find(r => r.employeeId === emp.id || (r.employeeName && emp.name && r.employeeName.trim().toLowerCase() === emp.name.trim().toLowerCase()));
       if (!found) {
         currentRecords.push({
           employeeId: emp.id,
@@ -4031,13 +4062,9 @@ document.addEventListener('DOMContentLoaded', () => {
         });
       } else {
         found.employeeName = emp.name;
+        if (!found.employeeId) found.employeeId = emp.id;
       }
     });
-
-    // Remove any stale records if employee was deleted
-    state.attendanceRecords[dateStr] = currentRecords.filter(r =>
-      state.employees.some(emp => emp.id === r.employeeId)
-    );
 
     return state.attendanceRecords[dateStr];
   };
@@ -4054,7 +4081,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (dateInput && dateInput.value !== activeDate) {
       dateInput.value = activeDate;
     }
-    if (monthPicker && !monthPicker.value) {
+    if (monthPicker && monthPicker.value !== activeDate.slice(0, 7)) {
       monthPicker.value = activeDate.slice(0, 7);
     }
 
@@ -4109,7 +4136,7 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
       displayList.forEach((emp, index) => {
         const defaultStatus = isSunday ? 'Sunday Off' : 'Present';
-        const record = dailyRecords.find(r => r.employeeId === emp.id) || {
+        const record = dailyRecords.find(r => r.employeeId === emp.id || (r.employeeName && emp.name && r.employeeName.trim().toLowerCase() === emp.name.trim().toLowerCase())) || {
           status: defaultStatus,
           notes: isSunday ? 'Weekly Off' : ''
         };
@@ -4201,41 +4228,45 @@ document.addEventListener('DOMContentLoaded', () => {
   const renderMonthlyAttendanceReport = () => {
     const monthlyTableBody = document.getElementById('attendanceMonthlyTableBody');
     const monthPicker = document.getElementById('attendanceMonthPicker');
+    const statsBanner = document.getElementById('attendanceMonthStatsBanner');
     if (!monthlyTableBody) return;
 
     const selectedMonth = (monthPicker && monthPicker.value) || state.selectedAttendanceDate.slice(0, 7);
+    const cal = getMonthCalendarInfo(selectedMonth);
     monthlyTableBody.innerHTML = '';
 
     if (state.employees.length === 0) {
       monthlyTableBody.innerHTML = `
-        <tr><td colspan="7" style="text-align:center; padding:20px; color:#64748B;">No employees registered yet.</td></tr>
+        <tr><td colspan="9" style="text-align:center; padding:20px; color:#64748B;">No employees registered yet.</td></tr>
       `;
+      if (statsBanner) {
+        statsBanner.innerHTML = `<span style="font-weight:600;">No employees registered</span>`;
+      }
       return;
     }
+
+    let teamTotalPresent = 0;
+    let teamTotalAbsent = 0;
+    let teamTotalLeaves = 0;
 
     state.employees.forEach((emp, index) => {
       let presentCount = 0;
       let absentCount = 0;
       let otherCount = 0;
-      let workingDaysLogged = 0;
       let sundayDutyCount = 0;
 
       // Scan all attendance keys for the selected month
       Object.keys(state.attendanceRecords).forEach(dateKey => {
         if (dateKey.startsWith(selectedMonth)) {
           const records = state.attendanceRecords[dateKey] || [];
-          const rec = records.find(r => r.employeeId === emp.id);
+          const rec = records.find(r => r.employeeId === emp.id || (r.employeeName && emp.name && r.employeeName.trim().toLowerCase() === emp.name.trim().toLowerCase()));
           if (rec) {
             const isSunday = new Date(dateKey + 'T00:00:00').getDay() === 0;
             if (isSunday) {
               if (rec.status === 'Sunday Duty' || rec.status === 'Present') {
                 sundayDutyCount++;
-                presentCount++;
               }
-              // Sundays (Sunday Off / Weekly Off) are excluded from the working days count!
             } else {
-              // Working days (Monday through Saturday)
-              workingDaysLogged++;
               if (rec.status === 'Present') presentCount++;
               else if (rec.status === 'Absent') absentCount++;
               else otherCount++;
@@ -4244,23 +4275,52 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       });
 
-      // Attendance rate is based on actual working days (Monday-Saturday)
-      const rate = workingDaysLogged > 0 ? Math.min(100, Math.round((presentCount / workingDaysLogged) * 100)) : (presentCount > 0 ? 100 : 0);
+      teamTotalPresent += presentCount;
+      teamTotalAbsent += absentCount;
+      teamTotalLeaves += otherCount;
+
+      const effectiveWorking = cal.workingDays > 0 ? cal.workingDays : 1;
+      const rate = Math.min(100, Math.round((presentCount / effectiveWorking) * 100));
 
       const tr = document.createElement('tr');
       tr.innerHTML = `
         <td style="text-align:center; font-weight:700; color:#64748B;">${index + 1}</td>
         <td style="font-weight:700; color:#1E293B;">${emp.name}</td>
         <td style="color:#64748B;">${emp.role || 'Staff'}</td>
-        <td style="text-align:center; font-weight:700; color:#059669;">${presentCount} days ${sundayDutyCount > 0 ? `<div style="color:#2563EB; font-size:10px; font-weight:600;">(${sundayDutyCount} Sun duty)</div>` : ''}</td>
-        <td style="text-align:center; font-weight:700; color:#E11D48;">${absentCount} days</td>
+        <td style="text-align:center; font-weight:600; color:#475569;">${cal.workingDays} days</td>
+        <td style="text-align:center; font-weight:700; color:#059669;">
+          ${presentCount} days
+          ${sundayDutyCount > 0 ? `<div style="color:#2563EB; font-size:10px; font-weight:600;">(+${sundayDutyCount} Sun duty)</div>` : ''}
+        </td>
+        <td style="text-align:center; font-weight:700; color:#DC2626;">${absentCount} days</td>
         <td style="text-align:center; font-weight:600; color:#D97706;">${otherCount} days</td>
+        <td style="text-align:center; font-weight:600; color:#2563EB;">${cal.sundays} Sundays</td>
         <td style="text-align:center;">
           <span class="status-pill ${rate >= 75 ? 'paid' : 'pending'}">${rate}%</span>
         </td>
       `;
       monthlyTableBody.appendChild(tr);
     });
+
+    if (statsBanner) {
+      const totalPossibleDays = state.employees.length * (cal.workingDays > 0 ? cal.workingDays : 1);
+      const overallRate = totalPossibleDays > 0 ? Math.round((teamTotalPresent / totalPossibleDays) * 100) : 0;
+      statsBanner.innerHTML = `
+        <div style="font-weight: 700; color: #1E293B; display: flex; align-items: center; gap: 6px;">
+          <span>🗓️ ${cal.monthName}</span>
+        </div>
+        <div style="height: 16px; width: 1px; background: #CBD5E1;"></div>
+        <div><strong>👥 Staff:</strong> ${state.employees.length} members</div>
+        <div style="height: 16px; width: 1px; background: #CBD5E1;"></div>
+        <div><strong>📅 Month Days:</strong> ${cal.daysInMonth} total (${cal.workingDays} working • ${cal.sundays} Sundays)</div>
+        <div style="height: 16px; width: 1px; background: #CBD5E1;"></div>
+        <div><strong>🟢 Total Present:</strong> <span style="color:#059669; font-weight:700;">${teamTotalPresent}</span> staff-days</div>
+        <div style="height: 16px; width: 1px; background: #CBD5E1;"></div>
+        <div><strong>🔴 Total Absences:</strong> <span style="color:#DC2626; font-weight:700;">${teamTotalAbsent}</span> staff-days</div>
+        <div style="height: 16px; width: 1px; background: #CBD5E1;"></div>
+        <div><strong>📈 Team Attendance:</strong> <span style="font-weight:700; color:${overallRate >= 75 ? '#059669' : '#D97706'};">${overallRate}%</span></div>
+      `;
+    }
   };
 
   // Window methods for inline table interactions
@@ -4319,6 +4379,86 @@ document.addEventListener('DOMContentLoaded', () => {
     await cloudDeleteEmployee(empId);
   };
 
+  // Monthly Attendance Summary Report (User requested: staff count, days attended, days absent, Sundays)
+  const exportMonthlySummaryReport = () => {
+    const monthPicker = document.getElementById('attendanceMonthPicker');
+    const selectedMonth = (monthPicker && monthPicker.value) || state.selectedAttendanceDate.slice(0, 7);
+    const cal = getMonthCalendarInfo(selectedMonth);
+
+    if (state.employees.length === 0) {
+      showToast('No employees registered to export', 'normal');
+      return;
+    }
+
+    // UTF-8 BOM ensures Excel on Windows correctly detects UTF-8 without symbol corruption
+    let csv = '\uFEFF';
+    csv += `"KMS SURGICAL - MONTHLY STAFF ATTENDANCE SUMMARY"\n`;
+    csv += `"Month:","${cal.monthName}","Total Staff:","${state.employees.length}","Days in Month:","${cal.daysInMonth}","Working Days:","${cal.workingDays}","Sundays (Weekly Off):","${cal.sundays}"\n\n`;
+    csv += `"S.No","Employee Name","Role / Designation","Phone","Month Days","Working Days","Sundays (Off)","Present Days (Came)","Absent Days","Half Day / Leave","Sunday Duty","Attendance Rate %"\n`;
+
+    let totalPresentAll = 0;
+    let totalAbsentAll = 0;
+    let totalLeaveAll = 0;
+    let totalSundayDutyAll = 0;
+
+    state.employees.forEach((emp, index) => {
+      let presentCount = 0;
+      let absentCount = 0;
+      let leaveCount = 0;
+      let sundayDutyCount = 0;
+
+      Object.keys(state.attendanceRecords).forEach(dateKey => {
+        if (dateKey.startsWith(selectedMonth)) {
+          const records = state.attendanceRecords[dateKey] || [];
+          const rec = records.find(r => r.employeeId === emp.id || (r.employeeName && emp.name && r.employeeName.trim().toLowerCase() === emp.name.trim().toLowerCase()));
+          if (rec) {
+            const isSunday = new Date(dateKey + 'T00:00:00').getDay() === 0;
+            if (isSunday) {
+              if (rec.status === 'Sunday Duty' || rec.status === 'Present') {
+                sundayDutyCount++;
+              }
+            } else {
+              if (rec.status === 'Present') presentCount++;
+              else if (rec.status === 'Absent') absentCount++;
+              else leaveCount++;
+            }
+          }
+        }
+      });
+
+      const effectiveWorking = cal.workingDays > 0 ? cal.workingDays : 1;
+      const rate = Math.min(100, Math.round((presentCount / effectiveWorking) * 100));
+
+      totalPresentAll += presentCount;
+      totalAbsentAll += absentCount;
+      totalLeaveAll += leaveCount;
+      totalSundayDutyAll += sundayDutyCount;
+
+      const empName = (emp.name || '').replace(/"/g, '""');
+      const empRole = (emp.role || 'Staff').replace(/"/g, '""');
+      const phoneCell = emp.phone ? `="${emp.phone.replace(/"/g, '""')}"` : '=""';
+
+      csv += `"${index + 1}","${empName}","${empRole}",${phoneCell},"${cal.daysInMonth}","${cal.workingDays}","${cal.sundays}","${presentCount}","${absentCount}","${leaveCount}","${sundayDutyCount}","${rate}%"\n`;
+    });
+
+    // Summary Totals Row
+    const avgRate = state.employees.length > 0 && cal.workingDays > 0 
+      ? Math.round((totalPresentAll / (state.employees.length * cal.workingDays)) * 100)
+      : 0;
+    csv += `\n"TOTALS / TEAM SUMMARY","${state.employees.length} Staff Members","","","${cal.daysInMonth}","${cal.workingDays}","${cal.sundays}","${totalPresentAll}","${totalAbsentAll}","${totalLeaveAll}","${totalSundayDutyAll}","${avgRate}% (Avg Rate)"\n`;
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `Attendance_Summary_${selectedMonth}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    showToast(`Monthly Attendance Summary for ${cal.monthName} downloaded! 📊`, 'success');
+  };
+
   const exportAttendanceCSV = () => {
     const monthPicker = document.getElementById('attendanceMonthPicker');
     const selectedMonth = (monthPicker && monthPicker.value) || state.selectedAttendanceDate.slice(0, 7);
@@ -4363,12 +4503,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `Attendance_${selectedMonth}.csv`;
+    link.download = `Attendance_DayWise_${selectedMonth}.csv`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
-    showToast('Attendance CSV exported cleanly!', 'success');
+    showToast('Day-Wise Attendance CSV exported cleanly!', 'success');
   };
 
   const initAttendanceModule = () => {
@@ -4380,7 +4520,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const saveBtn = document.getElementById('btnSaveAttendance');
     const searchStaffInput = document.getElementById('searchAttendanceStaffInput');
     const monthPicker = document.getElementById('attendanceMonthPicker');
-    const exportBtn = document.getElementById('btnExportAttendanceCsv');
+    const exportSummaryBtn = document.getElementById('btnExportMonthlySummary');
+    const exportDayWiseBtn = document.getElementById('btnExportAttendanceCsv');
 
     // Add Staff Modal references
     const addStaffModal = document.getElementById('addEmployeeModal');
@@ -4395,6 +4536,7 @@ document.addEventListener('DOMContentLoaded', () => {
       dateInput.addEventListener('change', (e) => {
         if (e.target.value) {
           state.selectedAttendanceDate = e.target.value;
+          if (monthPicker) monthPicker.value = state.selectedAttendanceDate.slice(0, 7);
           renderAttendancePageView();
         }
       });
@@ -4402,8 +4544,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (monthPicker) {
       monthPicker.value = state.selectedAttendanceDate.slice(0, 7);
-      monthPicker.addEventListener('change', () => {
-        renderMonthlyAttendanceReport();
+      monthPicker.addEventListener('change', (e) => {
+        const newMonth = e.target.value;
+        if (newMonth) {
+          // If the currently selected daily date is not in this month, switch to the 1st of the month or latest record in that month
+          if (!state.selectedAttendanceDate.startsWith(newMonth)) {
+            const monthDates = Object.keys(state.attendanceRecords).filter(d => d.startsWith(newMonth)).sort();
+            state.selectedAttendanceDate = monthDates.length > 0 ? monthDates[0] : `${newMonth}-01`;
+            if (dateInput) dateInput.value = state.selectedAttendanceDate;
+          }
+          renderAttendancePageView();
+        }
       });
     }
 
@@ -4413,6 +4564,7 @@ document.addEventListener('DOMContentLoaded', () => {
         d.setDate(d.getDate() - 1);
         state.selectedAttendanceDate = d.toISOString().split('T')[0];
         if (dateInput) dateInput.value = state.selectedAttendanceDate;
+        if (monthPicker) monthPicker.value = state.selectedAttendanceDate.slice(0, 7);
         renderAttendancePageView();
       });
     }
@@ -4423,6 +4575,7 @@ document.addEventListener('DOMContentLoaded', () => {
         d.setDate(d.getDate() + 1);
         state.selectedAttendanceDate = d.toISOString().split('T')[0];
         if (dateInput) dateInput.value = state.selectedAttendanceDate;
+        if (monthPicker) monthPicker.value = state.selectedAttendanceDate.slice(0, 7);
         renderAttendancePageView();
       });
     }
@@ -4431,6 +4584,7 @@ document.addEventListener('DOMContentLoaded', () => {
       todayBtn.addEventListener('click', () => {
         state.selectedAttendanceDate = new Date().toISOString().split('T')[0];
         if (dateInput) dateInput.value = state.selectedAttendanceDate;
+        if (monthPicker) monthPicker.value = state.selectedAttendanceDate.slice(0, 7);
         renderAttendancePageView();
       });
     }
@@ -4481,8 +4635,12 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
 
-    if (exportBtn) {
-      exportBtn.addEventListener('click', exportAttendanceCSV);
+    if (exportSummaryBtn) {
+      exportSummaryBtn.addEventListener('click', exportMonthlySummaryReport);
+    }
+
+    if (exportDayWiseBtn) {
+      exportDayWiseBtn.addEventListener('click', exportAttendanceCSV);
     }
 
     // Modal controls
