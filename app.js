@@ -387,9 +387,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const cloudDb = {
     async get(table, query = 'select=*') {
-      const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${query}`, {
+      const sep = query ? (query.includes('?') ? '&' : (query.length > 0 ? '&' : '')) : '';
+      const cacheBust = `${sep}_t=${Date.now()}`;
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${query}${cacheBust}`, {
         method: 'GET',
-        headers: supabaseHeaders
+        cache: 'no-store',
+        headers: {
+          ...supabaseHeaders,
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
+        }
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       return await res.json();
@@ -508,7 +515,9 @@ document.addEventListener('DOMContentLoaded', () => {
     pendingDeletedProductIds: new Set(),
     pendingDeletedEmployeeIds: new Set(),
     pendingStatusUpdates: {},
-    pendingBillsToSync: new Map()
+    pendingBillsToSync: new Map(),
+    pendingClinicsToSync: new Map(),
+    pendingProductsToSync: new Map()
   };
 
   let isCloudMutating = false;
@@ -581,6 +590,30 @@ document.addEventListener('DOMContentLoaded', () => {
                 state.pendingBillsToSync.set(item.bill.invoiceNo, item);
               }
             });
+          }
+        } catch (e) { }
+      }
+
+      // 3. Restore pending clinics to sync
+      const savedPendingClinics = localStorage.getItem('coverplus_pending_clinics_to_sync');
+      if (savedPendingClinics) {
+        try {
+          const arr = JSON.parse(savedPendingClinics);
+          if (Array.isArray(arr)) {
+            state.pendingClinicsToSync = new Map();
+            arr.forEach(c => { if (c && c.id) state.pendingClinicsToSync.set(c.id, c); });
+          }
+        } catch (e) { }
+      }
+
+      // 4. Restore pending products to sync
+      const savedPendingProducts = localStorage.getItem('coverplus_pending_products_to_sync');
+      if (savedPendingProducts) {
+        try {
+          const arr = JSON.parse(savedPendingProducts);
+          if (Array.isArray(arr)) {
+            state.pendingProductsToSync = new Map();
+            arr.forEach(p => { if (p && p.id) state.pendingProductsToSync.set(p.id, p); });
           }
         } catch (e) { }
       }
@@ -747,6 +780,12 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       if (state.pendingBillsToSync) {
         localStorage.setItem('coverplus_pending_bills_to_sync', JSON.stringify(Array.from(state.pendingBillsToSync.values())));
+      }
+      if (state.pendingClinicsToSync) {
+        localStorage.setItem('coverplus_pending_clinics_to_sync', JSON.stringify(Array.from(state.pendingClinicsToSync.values())));
+      }
+      if (state.pendingProductsToSync) {
+        localStorage.setItem('coverplus_pending_products_to_sync', JSON.stringify(Array.from(state.pendingProductsToSync.values())));
       }
     } catch (e) {
       console.warn('Local storage save notice:', e);
@@ -2641,9 +2680,13 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   window.deleteClinic = async (clinicId) => {
-    if (!confirm('Are you sure you want to remove this clinic facility?')) return;
+    const clinic = state.clinics.find(c => c.id === clinicId);
+    const clinicName = clinic ? clinic.name : 'this clinic';
+    if (!confirm(`Are you sure you want to remove ${clinicName}?`)) return;
+
     if (!state.pendingDeletedClinicIds) state.pendingDeletedClinicIds = new Set();
     state.pendingDeletedClinicIds.add(clinicId);
+    if (state.pendingClinicsToSync) state.pendingClinicsToSync.delete(clinicId);
     state.clinics = state.clinics.filter(c => c.id !== clinicId);
     if (state.selectedClinicId === clinicId) {
       state.selectedClinicId = state.clinics.length > 0 ? state.clinics[0].id : '';
@@ -2652,23 +2695,25 @@ document.addEventListener('DOMContentLoaded', () => {
     renderClinicSelect();
     renderClinicsPageView();
     updateStatsUI();
-    showToast('Clinic facility deleted', 'normal');
-    await cloudDeleteClinic(clinicId);
-    state.pendingDeletedClinicIds.delete(clinicId);
+    showToast('Clinic facility deleted permanently', 'normal');
+    try {
+      await cloudDeleteClinic(clinicId);
+    } catch (e) {
+      console.warn('Cloud delete clinic error:', e);
+    }
     saveLocalData();
   };
 
   window.deleteBill = async (invoiceNo) => {
     if (!confirm(`Are you sure you want to permanently delete invoice ${invoiceNo}?`)) return;
 
-    const billToDelete = state.recentBills.find(b => b.invoiceNo === invoiceNo);
-    if (!billToDelete) return;
-
     if (!state.pendingDeletedInvoiceNos) state.pendingDeletedInvoiceNos = new Set();
     state.pendingDeletedInvoiceNos.add(invoiceNo);
     if (state.pendingBillsToSync) {
       state.pendingBillsToSync.delete(invoiceNo);
     }
+
+    const billToDelete = state.recentBills.find(b => b.invoiceNo === invoiceNo);
 
     // Remove bill from local state
     state.recentBills = state.recentBills.filter(b => b.invoiceNo !== invoiceNo);
@@ -2681,7 +2726,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Restore stock for all items in the deleted bill
-    if (Array.isArray(billToDelete.itemsSnapshot)) {
+    if (billToDelete && Array.isArray(billToDelete.itemsSnapshot)) {
       const normalizeSize = (s) => (s || '').toString().toLowerCase().replace(/\s+/g, '').replace(/x/g, '*');
       const stockRestoredProducts = [];
       billToDelete.itemsSnapshot.forEach(item => {
@@ -2717,9 +2762,12 @@ document.addEventListener('DOMContentLoaded', () => {
     renderClinicsPageView();
     recalculateNextInvoiceNumber();
 
-    showToast(`Invoice ${invoiceNo} deleted successfully`, 'normal');
-    await cloudDeleteBill(invoiceNo);
-    state.pendingDeletedInvoiceNos.delete(invoiceNo);
+    showToast(`Invoice ${invoiceNo} deleted permanently`, 'normal');
+    try {
+      await cloudDeleteBill(invoiceNo);
+    } catch (e) {
+      console.warn('Cloud delete bill error:', e);
+    }
     saveLocalData();
   };
 
@@ -2816,13 +2864,17 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!confirm('Are you sure you want to remove this product?')) return;
     if (!state.pendingDeletedProductIds) state.pendingDeletedProductIds = new Set();
     state.pendingDeletedProductIds.add(productId);
+    if (state.pendingProductsToSync) state.pendingProductsToSync.delete(productId);
     state.products = state.products.filter(p => p.id !== productId);
     saveLocalData();
     renderProductsTable();
     updateProductsCatalogUI();
-    showToast('Product removed', 'normal');
-    await cloudDeleteProduct(productId);
-    state.pendingDeletedProductIds.delete(productId);
+    showToast('Product removed permanently', 'normal');
+    try {
+      await cloudDeleteProduct(productId);
+    } catch (e) {
+      console.warn('Cloud delete product error:', e);
+    }
     saveLocalData();
   };
 
@@ -2903,6 +2955,7 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   const cloudSaveClinic = async (clinic) => {
+    isCloudMutating = true;
     try {
       if (!clinic || !clinic.name) return false;
       const clinicId = (clinic.id && clinic.id.length === 36) ? clinic.id : generateUUID();
@@ -2917,39 +2970,35 @@ document.addEventListener('DOMContentLoaded', () => {
         total_billed: parseFloat(clinic.totalBilled) || 0
       };
 
-      try {
-        await cloudDb.insert('clinics', [payload]);
-      } catch (insErr) {
-        await cloudDb.update('clinics', payload, `id=eq.${clinicId}`);
-      }
+      await cloudDb.upsert('clinics', [payload], 'id');
       return true;
     } catch (err) {
       console.error('Cloud save clinic error:', err);
       return false;
+    } finally {
+      isCloudMutating = false;
     }
   };
 
   const cloudUpdateClinic = async (clinic) => {
+    isCloudMutating = true;
     try {
       if (!clinic || !clinic.id) return false;
-      const clinicId = clinic.id;
       const payload = {
+        id: clinic.id,
         name: clinic.name,
         contact_person: clinic.contactPerson || '',
         phone: clinic.phone || '',
         address: clinic.address || '',
         total_billed: parseFloat(clinic.totalBilled) || 0
       };
-
-      if (clinicId && clinicId.length === 36) {
-        await cloudDb.update('clinics', payload, `id=eq.${clinicId}`);
-      } else {
-        await cloudSaveClinic(clinic);
-      }
+      await cloudDb.upsert('clinics', [payload], 'id');
       return true;
     } catch (err) {
       console.error('Cloud update clinic error:', err);
       return false;
+    } finally {
+      isCloudMutating = false;
     }
   };
 
@@ -3211,19 +3260,39 @@ document.addEventListener('DOMContentLoaded', () => {
 
       let hasCloudData = false;
       if (Array.isArray(dbClinics)) {
-        const cloudClinics = dbClinics
+        const cloudClinicMap = new Map();
+        dbClinics
           .filter(c => !state.pendingDeletedClinicIds.has(c.id))
-          .map(c => ({
-            id: c.id,
-            name: c.name,
-            contactPerson: c.contact_person,
-            phone: c.phone,
-            address: c.address,
-            totalBilled: parseFloat(c.total_billed) || 0,
-            totalOrders: 0
-          }));
-        state.clinics = cloudClinics;
+          .forEach(c => {
+            cloudClinicMap.set(c.id, {
+              id: c.id,
+              name: c.name,
+              contactPerson: c.contact_person,
+              phone: c.phone,
+              address: c.address,
+              totalBilled: parseFloat(c.total_billed) || 0,
+              totalOrders: 0
+            });
+          });
+
+        // Retain any pending clinics waiting to sync so they NEVER disappear!
+        if (state.pendingClinicsToSync && state.pendingClinicsToSync.size > 0) {
+          state.pendingClinicsToSync.forEach((clinic, cid) => {
+            if (!state.pendingDeletedClinicIds.has(cid)) {
+              cloudClinicMap.set(cid, clinic);
+            }
+          });
+        }
+
+        state.clinics = Array.from(cloudClinicMap.values());
         hasCloudData = true;
+
+        // Ensure cloud server deletes any removed clinics
+        if (state.pendingDeletedClinicIds && state.pendingDeletedClinicIds.size > 0) {
+          for (const cid of Array.from(state.pendingDeletedClinicIds)) {
+            cloudDb.delete('clinics', `id=eq.${cid}`).catch(() => {});
+          }
+        }
       }
 
       if (Array.isArray(dbBills)) {
@@ -3245,7 +3314,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
           });
 
-        // Retain any pending offline bills waiting to sync (without resurrecting deleted ones)
+        // Retain any pending in-flight / offline bills waiting to sync (without resurrecting deleted ones)
         if (state.pendingBillsToSync && state.pendingBillsToSync.size > 0) {
           state.pendingBillsToSync.forEach((val, invNo) => {
             if (!state.pendingDeletedInvoiceNos.has(invNo) && !cloudBillMap.has(invNo)) {
@@ -3261,16 +3330,10 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         hasCloudData = true;
 
-        // Process pending deletions against cloud
+        // Ensure cloud server deletes any removed bills
         if (state.pendingDeletedInvoiceNos && state.pendingDeletedInvoiceNos.size > 0) {
           for (const invNo of Array.from(state.pendingDeletedInvoiceNos)) {
-            try {
-              const ok = await cloudDeleteBill(invNo);
-              if (ok) {
-                state.pendingDeletedInvoiceNos.delete(invNo);
-                saveLocalData();
-              }
-            } catch (delErr) { }
+            cloudDb.delete('bills', `invoice_no=eq.${invNo}`).catch(() => {});
           }
         }
 
@@ -3300,20 +3363,38 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       if (Array.isArray(dbProducts)) {
-        const cloudProducts = dbProducts
+        const cloudProdMap = new Map();
+        dbProducts
           .filter(p => !state.pendingDeletedProductIds.has(p.id))
-          .map(p => {
-            return {
+          .forEach(p => {
+            cloudProdMap.set(p.id, {
               id: p.id,
               name: p.name,
               sizes: p.sizes,
               spec: p.spec,
               rate: parseFloat(p.rate) || 0,
               stocks: p.stocks || {}
-            };
+            });
           });
-        state.products = cloudProducts;
+
+        // Retain any pending products waiting to sync so they NEVER disappear!
+        if (state.pendingProductsToSync && state.pendingProductsToSync.size > 0) {
+          state.pendingProductsToSync.forEach((prod, pid) => {
+            if (!state.pendingDeletedProductIds.has(pid)) {
+              cloudProdMap.set(pid, prod);
+            }
+          });
+        }
+
+        state.products = Array.from(cloudProdMap.values());
         hasCloudData = true;
+
+        // Ensure cloud server deletes any removed products
+        if (state.pendingDeletedProductIds && state.pendingDeletedProductIds.size > 0) {
+          for (const pid of Array.from(state.pendingDeletedProductIds)) {
+            cloudDb.delete('products', `id=eq.${pid}`).catch(() => {});
+          }
+        }
       }
 
       if (Array.isArray(dbSettings) && dbSettings.length > 0 && dbSettings[0]) {
@@ -3592,12 +3673,22 @@ document.addEventListener('DOMContentLoaded', () => {
           renderClinicSelect();
           renderClinicsPageView();
           updateStatsUI();
-          cloudUpdateClinic(clinic);
+
+          if (!state.pendingClinicsToSync) state.pendingClinicsToSync = new Map();
+          state.pendingClinicsToSync.set(clinic.id, clinic);
 
           resetClinicModalState();
           const modal = document.getElementById('addClinicModal');
           if (modal) modal.classList.remove('active');
           showToast(`Clinic "${name}" updated successfully!`, 'success');
+
+          (async () => {
+            const ok = await cloudUpdateClinic(clinic);
+            if (ok) {
+              state.pendingClinicsToSync.delete(clinic.id);
+              saveLocalData();
+            }
+          })();
           return;
         }
       }
@@ -3615,16 +3706,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
       state.clinics.unshift(newClinic);
       state.selectedClinicId = newClinic.id;
+      if (!state.pendingClinicsToSync) state.pendingClinicsToSync = new Map();
+      state.pendingClinicsToSync.set(newClinic.id, newClinic);
       saveLocalData();
       renderClinicSelect();
       renderClinicsPageView();
       updateStatsUI();
-      cloudSaveClinic(newClinic);
 
       resetClinicModalState();
       const modal = document.getElementById('addClinicModal');
       if (modal) modal.classList.remove('active');
       showToast(`Clinic "${name}" added successfully!`, 'success');
+
+      (async () => {
+        const ok = await cloudSaveClinic(newClinic);
+        if (ok) {
+          state.pendingClinicsToSync.delete(newClinic.id);
+          saveLocalData();
+        }
+      })();
     });
   }
 
@@ -3757,12 +3857,22 @@ document.addEventListener('DOMContentLoaded', () => {
           saveLocalData();
           renderProductsTable();
           updateProductsCatalogUI();
-          cloudUpdateProduct(prod);
+
+          if (!state.pendingProductsToSync) state.pendingProductsToSync = new Map();
+          state.pendingProductsToSync.set(prod.id, prod);
 
           resetProductModalState();
           const modal = document.getElementById('addProductModal');
           if (modal) modal.classList.remove('active');
           showToast(`Product "${name}" updated (₹${formatCompactRate(rate)})!`, 'success');
+
+          (async () => {
+            const ok = await cloudUpdateProduct(prod);
+            if (ok) {
+              state.pendingProductsToSync.delete(prod.id);
+              saveLocalData();
+            }
+          })();
           return;
         }
       }
@@ -3778,15 +3888,24 @@ document.addEventListener('DOMContentLoaded', () => {
       };
 
       state.products.push(newProd);
+      if (!state.pendingProductsToSync) state.pendingProductsToSync = new Map();
+      state.pendingProductsToSync.set(newProd.id, newProd);
       saveLocalData();
       renderProductsTable();
       updateProductsCatalogUI();
-      cloudSaveProduct(newProd);
 
       resetProductModalState();
       const modal = document.getElementById('addProductModal');
       if (modal) modal.classList.remove('active');
       showToast(`Product "${name}" added (₹${formatCompactRate(rate)})!`, 'success');
+
+      (async () => {
+        const ok = await cloudSaveProduct(newProd);
+        if (ok) {
+          state.pendingProductsToSync.delete(newProd.id);
+          saveLocalData();
+        }
+      })();
     });
   }
 
@@ -4367,6 +4486,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const name = emp ? emp.name : 'this staff member';
     if (!confirm(`Are you sure you want to remove ${name} from the staff list?`)) return;
 
+    if (!state.pendingDeletedEmployeeIds) state.pendingDeletedEmployeeIds = new Set();
+    state.pendingDeletedEmployeeIds.add(empId);
     state.employees = state.employees.filter(e => e.id !== empId);
     const activeDate = state.selectedAttendanceDate;
     if (state.attendanceRecords[activeDate]) {
@@ -4375,8 +4496,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     saveLocalData();
     renderAttendancePageView();
-    showToast(`Staff member removed`, 'normal');
-    await cloudDeleteEmployee(empId);
+    showToast(`Staff member removed permanently`, 'normal');
+    try {
+      await cloudDeleteEmployee(empId);
+    } catch (e) {
+      console.warn('Cloud delete employee error:', e);
+    }
+    saveLocalData();
   };
 
   // Monthly Attendance Summary Report (User requested: staff count, days attended, days absent, Sundays)
