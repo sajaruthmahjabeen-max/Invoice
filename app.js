@@ -387,9 +387,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const cloudDb = {
     async get(table, query = 'select=*') {
-      const sep = query ? (query.includes('?') ? '&' : (query.length > 0 ? '&' : '')) : '';
-      const cacheBust = `${sep}_t=${Date.now()}`;
-      const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${query}${cacheBust}`, {
+      const q = query ? `?${query}` : '';
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}${q}`, {
         method: 'GET',
         cache: 'no-store',
         headers: {
@@ -521,6 +520,7 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   let isCloudMutating = false;
+  let isCloudMutatingSince = 0;
   let isGeneratingBill = false;
 
   const recalculateNextInvoiceNumber = () => {
@@ -3247,7 +3247,10 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   const cloudFetchAllData = async () => {
-    if (isCloudMutating) return;
+    if (isCloudMutating && (Date.now() - isCloudMutatingSince) < 8000) return;
+    if (isCloudMutating) {
+      isCloudMutating = false;
+    }
     try {
       const [dbClinics, dbBills, dbProducts, dbSettings, dbEmployees, dbAttendance] = await Promise.all([
         cloudDb.get('clinics').catch(() => null),
@@ -4840,9 +4843,15 @@ document.addEventListener('DOMContentLoaded', () => {
   recalculateNextInvoiceNumber();
   cloudFetchAllData();
 
-  // Instant multi-device sync when window or tab gets focus
+  // Instant multi-device sync when window or tab gets focus or becomes visible
   window.addEventListener('focus', () => {
     if (navigator.onLine !== false) {
+      cloudFetchAllData();
+    }
+  });
+
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && navigator.onLine !== false) {
       cloudFetchAllData();
     }
   });
@@ -4859,10 +4868,10 @@ document.addEventListener('DOMContentLoaded', () => {
     showToast('⚠️ Offline mode: bills are saved locally and will auto-sync when online.', 'normal');
   });
 
-  // Periodic background sync every 20 seconds (when online)
+  // Periodic background sync every 10 seconds across all devices (when online)
   setInterval(() => {
     if (navigator.onLine !== false) {
       cloudFetchAllData();
     }
-  }, 20000);
+  }, 10000);
 });

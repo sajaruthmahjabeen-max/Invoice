@@ -3,7 +3,7 @@
    Enables 100% full offline usage with Network-First code updates
 ================================================================ */
 
-const CACHE_NAME = 'trilion-thunders-cache-v16';
+const CACHE_NAME = 'trilion-thunders-cache-v17';
 
 // Core assets to pre-cache immediately upon install
 const PRECACHE_ASSETS = [
@@ -59,6 +59,11 @@ self.addEventListener('fetch', (event) => {
 
   // Ignore non-http requests
   if (!url.protocol.startsWith('http')) return;
+
+  // Bypass Service Worker completely for Supabase Cloud API calls
+  if (url.origin.includes('supabase.co')) {
+    return;
+  }
 
   // For Google Fonts or external CDNs: Stale-While-Revalidate
   if (url.origin.includes('fonts.googleapis.com') || url.origin.includes('fonts.gstatic.com')) {
