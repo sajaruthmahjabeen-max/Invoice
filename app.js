@@ -228,47 +228,40 @@
     setAuthLoading(true);
 
     if (!_supa) {
-      setTimeout(() => {
-        setAuthLoading(false);
-        const demoUser = { email: email || 'dr.admin@trilionthunders.com' };
-        localStorage.setItem('coverplus_demo_user', JSON.stringify(demoUser));
-        showApp(demoUser);
-      }, 300);
+      showAuthAlert('Database connection not initialized. Please refresh the page.');
+      setAuthLoading(false);
       return;
     }
 
     try {
       if (isSignUpMode) {
         const { data, error } = await _supa.auth.signUp({ email, password });
-        if (error) throw error;
-        if (data.session) {
-          const user = data.session.user || { email };
-          localStorage.setItem('coverplus_demo_user', JSON.stringify(user));
-          showApp(user);
+        if (error) {
+          showAuthAlert(error.message || 'Unable to create account. Please try again.');
+          return;
+        }
+        if (data && data.session) {
+          showApp(data.session.user);
         } else {
-          showAuthAlert('✓ Account created! You can now sign in.', 'success');
+          showAuthAlert('✓ Account registered! Please check your email to confirm, then sign in.', 'success');
           window.toggleAuthMode();
         }
       } else {
         const { data, error } = await _supa.auth.signInWithPassword({ email, password });
         if (error) {
-          // If Supabase reports invalid credentials or project auth isn't seeded, provide instant access fallback
-          console.warn('Supabase sign-in note:', error.message);
-          const fallbackUser = { email };
-          localStorage.setItem('coverplus_demo_user', JSON.stringify(fallbackUser));
-          showApp(fallbackUser);
+          console.warn('Supabase sign-in rejected:', error.message);
+          showAuthAlert('Invalid email or password. Please try again.');
           return;
         }
         if (data && data.user) {
-          localStorage.setItem('coverplus_demo_user', JSON.stringify(data.user));
           showApp(data.user);
+        } else {
+          showAuthAlert('Invalid email or password. Please try again.');
         }
       }
     } catch (err) {
-      console.warn('Auth catch fallback:', err);
-      const fallbackUser = { email: email || 'admin@trilionthunders.com' };
-      localStorage.setItem('coverplus_demo_user', JSON.stringify(fallbackUser));
-      showApp(fallbackUser);
+      console.warn('Auth exception:', err);
+      showAuthAlert(err.message || 'Authentication error. Please check your credentials.');
     } finally {
       setAuthLoading(false);
     }
@@ -312,14 +305,6 @@
   async function initAuth() {
     wireLogout();
 
-    const savedUser = localStorage.getItem('coverplus_demo_user');
-    if (savedUser) {
-      try {
-        showApp(JSON.parse(savedUser));
-        return;
-      } catch (e) { }
-    }
-
     if (!_supa) {
       showAuthScreen();
       return;
@@ -330,13 +315,14 @@
       if (session && session.user) {
         showApp(session.user);
       } else {
+        localStorage.removeItem('coverplus_demo_user');
         showAuthScreen();
       }
 
       _supa.auth.onAuthStateChange((_event, session) => {
         if (session && session.user) {
           showApp(session.user);
-        } else if (!localStorage.getItem('coverplus_demo_user')) {
+        } else {
           showAuthScreen();
         }
       });

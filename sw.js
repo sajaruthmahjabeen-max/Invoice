@@ -3,7 +3,7 @@
    Enables 100% full offline usage with Network-First code updates
 ================================================================ */
 
-const CACHE_NAME = 'trilion-thunders-cache-v17';
+const CACHE_NAME = 'trilion-thunders-cache-v18';
 
 // Core assets to pre-cache immediately upon install
 const PRECACHE_ASSETS = [
