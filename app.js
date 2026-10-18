@@ -23,6 +23,11 @@
 
   /* ------ Utility helpers ------ */
   function showApp(user) {
+    window.__currentUser = user || null;
+    if (user) {
+      if (user.email) localStorage.setItem('coverplus_active_user_email', user.email);
+      if (user.id) localStorage.setItem('coverplus_active_user_id', user.id);
+    }
     const authScreen = document.getElementById('auth-screen');
     const appContainer = document.getElementById('app-container');
     if (authScreen) {
@@ -34,12 +39,20 @@
       appContainer.style.display = 'flex';
     }
     updateSidebarUser(user);
-    if (typeof window.syncWithCloud === 'function') {
+    if (typeof window.switchUserContext === 'function') {
+      window.switchUserContext(user);
+    } else if (typeof window.syncWithCloud === 'function') {
       window.syncWithCloud();
     }
   }
 
   function showAuthScreen() {
+    window.__currentUser = null;
+    localStorage.removeItem('coverplus_active_user_email');
+    localStorage.removeItem('coverplus_active_user_id');
+    if (typeof window.clearUserContext === 'function') {
+      window.clearUserContext();
+    }
     const authScreen = document.getElementById('auth-screen');
     const appContainer = document.getElementById('app-container');
     if (authScreen) {
@@ -371,6 +384,24 @@ document.addEventListener('DOMContentLoaded', () => {
     'Prefer': 'return=representation'
   };
 
+  let cloudSupportsUserId = null;
+  const testCloudUserIdSupport = async () => {
+    if (cloudSupportsUserId !== null) return cloudSupportsUserId;
+    try {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/bills?select=id,user_id&limit=1`, {
+        method: 'GET',
+        headers: {
+          ...supabaseHeaders,
+          'Cache-Control': 'no-cache, no-store, must-revalidate'
+        }
+      });
+      cloudSupportsUserId = res.ok;
+    } catch (e) {
+      cloudSupportsUserId = false;
+    }
+    return cloudSupportsUserId;
+  };
+
   const cloudDb = {
     async get(table, query = 'select=*') {
       const q = query ? `?${query}` : '';
@@ -531,32 +562,146 @@ document.addEventListener('DOMContentLoaded', () => {
     if (previewInvNo) previewInvNo.textContent = state.invoiceNumber;
   };
 
+  // Multi-User Local Storage Scoper & Synchronizer
+  const getUserKey = () => {
+    const user = window.__currentUser;
+    if (user && (user.email || user.id)) {
+      return (user.email || user.id).toLowerCase().replace(/[^a-z0-9_]/g, '_');
+    }
+    const savedEmail = localStorage.getItem('coverplus_active_user_email');
+    if (savedEmail) {
+      return savedEmail.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+    }
+    return 'guest';
+  };
+
+  const getStorageKey = (name) => {
+    const uKey = getUserKey();
+    return `coverplus_u_${uKey}_${name}`;
+  };
+
+  const migrateLegacyDataIfNeeded = () => {
+    const user = window.__currentUser;
+    const email = user && user.email ? user.email.toLowerCase() : (localStorage.getItem('coverplus_active_user_email') || '').toLowerCase();
+    // Only migrate un-scoped legacy data if the user is salihathasneem@gmail.com
+    if (email === 'salihathasneem@gmail.com') {
+      const legacyBills = localStorage.getItem('coverplus_bills');
+      const scopedBillsKey = getStorageKey('bills');
+      if (legacyBills && localStorage.getItem(scopedBillsKey) === null) {
+        const keys = [
+          'clinics', 'bills', 'products', 'settings', 'employees',
+          'attendance', 'selected_clinic', 'draft_items',
+          'pending_deleted_invoices', 'pending_deleted_clinics',
+          'pending_deleted_products', 'pending_deleted_employees',
+          'pending_bills_to_sync', 'pending_clinics_to_sync', 'pending_products_to_sync'
+        ];
+        keys.forEach(k => {
+          const val = localStorage.getItem(`coverplus_${k}`);
+          if (val !== null) {
+            localStorage.setItem(getStorageKey(k), val);
+          }
+        });
+        // Clear un-scoped keys so subsequent new users don't see them
+        keys.forEach(k => localStorage.removeItem(`coverplus_${k}`));
+      }
+    }
+  };
+
+  const resetAppState = () => {
+    state.clinics = [];
+    state.products = [];
+    state.recentBills = [];
+    state.selectedClinicId = '';
+    state.invoiceCounter = 1;
+    state.invoiceNumber = 'INV-2026-00001';
+    state.invoiceDate = getTodayFormatted();
+    state.items = [{ id: Date.now(), name: '', size: 'Medium', qty: 1, rate: 0 }];
+    state.employees = [];
+    state.attendanceRecords = {};
+    state.pendingDeletedInvoiceNos = new Set();
+    state.pendingDeletedClinicIds = new Set();
+    state.pendingDeletedProductIds = new Set();
+    state.pendingDeletedEmployeeIds = new Set();
+    state.pendingStatusUpdates = {};
+    state.pendingBillsToSync = new Map();
+    state.pendingClinicsToSync = new Map();
+    state.pendingProductsToSync = new Map();
+    state.settings = {
+      companyName: 'Trilion Thunders Company',
+      tagline: 'Clinic & Hospital Covers',
+      address: '123, Business Street, Chennai - 600001',
+      phone: '+91 98765 43210',
+      email: 'support@trilionthunders.com',
+      website: 'www.trilionthunders.com',
+      invoicePrefix: 'INV-2026-',
+      signature: 'Saju Mauji'
+    };
+    state.stats = {
+      totalClinics: 0,
+      totalBills: 0,
+      totalSales: 0,
+      pendingAmount: 0
+    };
+  };
+
+  const reRenderAllViews = () => {
+    renderClinicSelect();
+    renderRecentBillsTable();
+    renderAllBillsPageView();
+    renderClinicsPageView();
+    renderDashboardClinicsTable();
+    renderProductsTable();
+    updateProductsCatalogUI();
+    renderOutstandingTable();
+    renderSalesReportView();
+    renderSettingsUI();
+    updateStatsUI();
+    recalculateNextInvoiceNumber();
+    renderAttendancePageView();
+  };
+
+  window.switchUserContext = (user) => {
+    window.__currentUser = user;
+    resetAppState();
+    loadLocalData();
+    reRenderAllViews();
+    cloudFetchAllData();
+  };
+
+  window.clearUserContext = () => {
+    window.__currentUser = null;
+    resetAppState();
+    reRenderAllViews();
+  };
+
   // Local Storage Synchronizer
   const loadLocalData = () => {
     try {
+      migrateLegacyDataIfNeeded();
+
       // 1. Restore pending deleted sets
-      const savedPendingDeletedInvoices = localStorage.getItem('coverplus_pending_deleted_invoices');
+      const savedPendingDeletedInvoices = localStorage.getItem(getStorageKey('pending_deleted_invoices'));
       if (savedPendingDeletedInvoices) {
         try {
           const arr = JSON.parse(savedPendingDeletedInvoices);
           if (Array.isArray(arr)) state.pendingDeletedInvoiceNos = new Set(arr);
         } catch (e) { }
       }
-      const savedPendingDeletedClinics = localStorage.getItem('coverplus_pending_deleted_clinics');
+      const savedPendingDeletedClinics = localStorage.getItem(getStorageKey('pending_deleted_clinics'));
       if (savedPendingDeletedClinics) {
         try {
           const arr = JSON.parse(savedPendingDeletedClinics);
           if (Array.isArray(arr)) state.pendingDeletedClinicIds = new Set(arr);
         } catch (e) { }
       }
-      const savedPendingDeletedProducts = localStorage.getItem('coverplus_pending_deleted_products');
+      const savedPendingDeletedProducts = localStorage.getItem(getStorageKey('pending_deleted_products'));
       if (savedPendingDeletedProducts) {
         try {
           const arr = JSON.parse(savedPendingDeletedProducts);
           if (Array.isArray(arr)) state.pendingDeletedProductIds = new Set(arr);
         } catch (e) { }
       }
-      const savedPendingDeletedEmployees = localStorage.getItem('coverplus_pending_deleted_employees');
+      const savedPendingDeletedEmployees = localStorage.getItem(getStorageKey('pending_deleted_employees'));
       if (savedPendingDeletedEmployees) {
         try {
           const arr = JSON.parse(savedPendingDeletedEmployees);
@@ -565,7 +710,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       // 2. Restore pending bills to sync (offline outbox)
-      const savedPendingBills = localStorage.getItem('coverplus_pending_bills_to_sync');
+      const savedPendingBills = localStorage.getItem(getStorageKey('pending_bills_to_sync'));
       if (savedPendingBills) {
         try {
           const arr = JSON.parse(savedPendingBills);
@@ -581,7 +726,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       // 3. Restore pending clinics to sync
-      const savedPendingClinics = localStorage.getItem('coverplus_pending_clinics_to_sync');
+      const savedPendingClinics = localStorage.getItem(getStorageKey('pending_clinics_to_sync'));
       if (savedPendingClinics) {
         try {
           const arr = JSON.parse(savedPendingClinics);
@@ -593,7 +738,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       // 4. Restore pending products to sync
-      const savedPendingProducts = localStorage.getItem('coverplus_pending_products_to_sync');
+      const savedPendingProducts = localStorage.getItem(getStorageKey('pending_products_to_sync'));
       if (savedPendingProducts) {
         try {
           const arr = JSON.parse(savedPendingProducts);
@@ -604,7 +749,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (e) { }
       }
 
-      const savedClinics = localStorage.getItem('coverplus_clinics');
+      const savedClinics = localStorage.getItem(getStorageKey('clinics'));
       if (savedClinics !== null) {
         try {
           state.clinics = JSON.parse(savedClinics) || [];
@@ -615,7 +760,7 @@ document.addEventListener('DOMContentLoaded', () => {
         state.clinics = [];
       }
 
-      const savedBills = localStorage.getItem('coverplus_bills');
+      const savedBills = localStorage.getItem(getStorageKey('bills'));
       if (savedBills !== null) {
         try {
           state.recentBills = JSON.parse(savedBills) || [];
@@ -640,7 +785,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
       }
 
-      const savedProducts = localStorage.getItem('coverplus_products');
+      const savedProducts = localStorage.getItem(getStorageKey('products'));
       if (savedProducts !== null) {
         try {
           state.products = JSON.parse(savedProducts) || [];
@@ -651,7 +796,7 @@ document.addEventListener('DOMContentLoaded', () => {
         state.products = [];
       }
 
-      const savedEmployees = localStorage.getItem('coverplus_employees');
+      const savedEmployees = localStorage.getItem(getStorageKey('employees'));
       if (savedEmployees !== null) {
         try {
           state.employees = JSON.parse(savedEmployees) || [];
@@ -668,7 +813,7 @@ document.addEventListener('DOMContentLoaded', () => {
         e.name !== 'Test Staff' && e.id !== 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11'
       );
 
-      const savedAttendance = localStorage.getItem('coverplus_attendance');
+      const savedAttendance = localStorage.getItem(getStorageKey('attendance'));
       if (savedAttendance !== null) {
         try {
           state.attendanceRecords = JSON.parse(savedAttendance) || {};
@@ -707,7 +852,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       saveLocalData();
 
-      const savedSettings = localStorage.getItem('coverplus_settings');
+      const savedSettings = localStorage.getItem(getStorageKey('settings'));
       if (savedSettings) state.settings = { ...state.settings, ...JSON.parse(savedSettings) };
       if (state.settings.companyName === 'CoverPlus' || state.settings.companyName === 'CoverPlus Medical Supplies') {
         state.settings.companyName = 'Trilion Thunders Company';
@@ -719,14 +864,14 @@ document.addEventListener('DOMContentLoaded', () => {
         state.settings.website = 'www.trilionthunders.com';
       }
 
-      const savedSelectedClinic = localStorage.getItem('coverplus_selected_clinic');
+      const savedSelectedClinic = localStorage.getItem(getStorageKey('selected_clinic'));
       if (savedSelectedClinic && state.clinics.some(c => c.id === savedSelectedClinic)) {
         state.selectedClinicId = savedSelectedClinic;
       } else if (state.clinics.length > 0 && !state.selectedClinicId) {
         state.selectedClinicId = state.clinics[0].id;
       }
 
-      const savedDraftItems = localStorage.getItem('coverplus_draft_items');
+      const savedDraftItems = localStorage.getItem(getStorageKey('draft_items'));
       if (savedDraftItems) {
         const parsed = JSON.parse(savedDraftItems);
         if (Array.isArray(parsed) && parsed.length > 0) {
@@ -742,36 +887,38 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const saveLocalData = () => {
     try {
-      localStorage.setItem('coverplus_clinics', JSON.stringify(state.clinics));
-      localStorage.setItem('coverplus_bills', JSON.stringify(state.recentBills));
-      localStorage.setItem('coverplus_products', JSON.stringify(state.products));
-      localStorage.setItem('coverplus_settings', JSON.stringify(state.settings));
-      localStorage.setItem('coverplus_employees', JSON.stringify(state.employees));
-      localStorage.setItem('coverplus_attendance', JSON.stringify(state.attendanceRecords));
+      localStorage.setItem(getStorageKey('clinics'), JSON.stringify(state.clinics));
+      localStorage.setItem(getStorageKey('bills'), JSON.stringify(state.recentBills));
+      localStorage.setItem(getStorageKey('products'), JSON.stringify(state.products));
+      localStorage.setItem(getStorageKey('settings'), JSON.stringify(state.settings));
+      localStorage.setItem(getStorageKey('employees'), JSON.stringify(state.employees));
+      localStorage.setItem(getStorageKey('attendance'), JSON.stringify(state.attendanceRecords));
       if (state.selectedClinicId) {
-        localStorage.setItem('coverplus_selected_clinic', state.selectedClinicId);
+        localStorage.setItem(getStorageKey('selected_clinic'), state.selectedClinicId);
+      } else {
+        localStorage.removeItem(getStorageKey('selected_clinic'));
       }
-      localStorage.setItem('coverplus_draft_items', JSON.stringify(state.items));
+      localStorage.setItem(getStorageKey('draft_items'), JSON.stringify(state.items));
       if (state.pendingDeletedInvoiceNos) {
-        localStorage.setItem('coverplus_pending_deleted_invoices', JSON.stringify(Array.from(state.pendingDeletedInvoiceNos)));
+        localStorage.setItem(getStorageKey('pending_deleted_invoices'), JSON.stringify(Array.from(state.pendingDeletedInvoiceNos)));
       }
       if (state.pendingDeletedClinicIds) {
-        localStorage.setItem('coverplus_pending_deleted_clinics', JSON.stringify(Array.from(state.pendingDeletedClinicIds)));
+        localStorage.setItem(getStorageKey('pending_deleted_clinics'), JSON.stringify(Array.from(state.pendingDeletedClinicIds)));
       }
       if (state.pendingDeletedProductIds) {
-        localStorage.setItem('coverplus_pending_deleted_products', JSON.stringify(Array.from(state.pendingDeletedProductIds)));
+        localStorage.setItem(getStorageKey('pending_deleted_products'), JSON.stringify(Array.from(state.pendingDeletedProductIds)));
       }
       if (state.pendingDeletedEmployeeIds) {
-        localStorage.setItem('coverplus_pending_deleted_employees', JSON.stringify(Array.from(state.pendingDeletedEmployeeIds)));
+        localStorage.setItem(getStorageKey('pending_deleted_employees'), JSON.stringify(Array.from(state.pendingDeletedEmployeeIds)));
       }
       if (state.pendingBillsToSync) {
-        localStorage.setItem('coverplus_pending_bills_to_sync', JSON.stringify(Array.from(state.pendingBillsToSync.values())));
+        localStorage.setItem(getStorageKey('pending_bills_to_sync'), JSON.stringify(Array.from(state.pendingBillsToSync.values())));
       }
       if (state.pendingClinicsToSync) {
-        localStorage.setItem('coverplus_pending_clinics_to_sync', JSON.stringify(Array.from(state.pendingClinicsToSync.values())));
+        localStorage.setItem(getStorageKey('pending_clinics_to_sync'), JSON.stringify(Array.from(state.pendingClinicsToSync.values())));
       }
       if (state.pendingProductsToSync) {
-        localStorage.setItem('coverplus_pending_products_to_sync', JSON.stringify(Array.from(state.pendingProductsToSync.values())));
+        localStorage.setItem(getStorageKey('pending_products_to_sync'), JSON.stringify(Array.from(state.pendingProductsToSync.values())));
       }
     } catch (e) {
       console.warn('Local storage save notice:', e);
@@ -1558,7 +1705,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // Reset drafted items so subsequent Print or PDF clicks don't re-create duplicate bills
       state.items = [{ id: Date.now(), name: '', size: 'Medium', qty: 1, rate: 0 }];
-      localStorage.removeItem('coverplus_draft_items');
+      localStorage.removeItem(getStorageKey('draft_items'));
       calculateAndRenderItems();
 
       saveLocalData();
@@ -2940,15 +3087,24 @@ document.addEventListener('DOMContentLoaded', () => {
     showToast(`Added "${prod.name}" (₹${prod.rate})`, 'normal');
   };
 
+  const getCloudUserId = () => {
+    const user = window.__currentUser;
+    if (user && user.email) return user.email.toLowerCase();
+    if (user && user.id) return user.id;
+    return localStorage.getItem('coverplus_active_user_email') || 'guest';
+  };
+
   const cloudSaveClinic = async (clinic) => {
     isCloudMutating = true;
     try {
       if (!clinic || !clinic.name) return false;
       const clinicId = (clinic.id && clinic.id.length === 36) ? clinic.id : generateUUID();
       clinic.id = clinicId;
+      const userId = getCloudUserId();
 
       const payload = {
         id: clinicId,
+        user_id: userId,
         name: clinic.name,
         contact_person: clinic.contactPerson || '',
         phone: clinic.phone || '',
@@ -2956,6 +3112,8 @@ document.addEventListener('DOMContentLoaded', () => {
         total_billed: parseFloat(clinic.totalBilled) || 0
       };
 
+      const hasUserIdCol = await testCloudUserIdSupport();
+      if (!hasUserIdCol) delete payload.user_id;
       await cloudDb.upsert('clinics', [payload], 'id');
       return true;
     } catch (err) {
@@ -2970,14 +3128,18 @@ document.addEventListener('DOMContentLoaded', () => {
     isCloudMutating = true;
     try {
       if (!clinic || !clinic.id) return false;
+      const userId = getCloudUserId();
       const payload = {
         id: clinic.id,
+        user_id: userId,
         name: clinic.name,
         contact_person: clinic.contactPerson || '',
         phone: clinic.phone || '',
         address: clinic.address || '',
         total_billed: parseFloat(clinic.totalBilled) || 0
       };
+      const hasUserIdCol = await testCloudUserIdSupport();
+      if (!hasUserIdCol) delete payload.user_id;
       await cloudDb.upsert('clinics', [payload], 'id');
       return true;
     } catch (err) {
@@ -2998,6 +3160,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       }
       let clinicUuid = (clinic && clinic.id && clinic.id.length === 36) ? clinic.id : null;
+      const userId = getCloudUserId();
+      const hasUserIdCol = await testCloudUserIdSupport();
       const payload = {
         invoice_no: bill.invoiceNo,
         clinic_id: clinicUuid,
@@ -3008,12 +3172,16 @@ document.addEventListener('DOMContentLoaded', () => {
         total_amount: bill.amount,
         status: bill.status || 'Paid'
       };
+      if (hasUserIdCol) payload.user_id = userId;
       try {
-        await cloudDb.upsert('bills', [payload], 'invoice_no');
+        // Use user_id+invoice_no as unique key when user isolation is supported
+        const conflictKey = hasUserIdCol ? 'user_id,invoice_no' : 'invoice_no';
+        await cloudDb.upsert('bills', [payload], conflictKey);
       } catch (insertErr) {
         console.warn('Initial bill upsert failed, retrying without FK clinic_id:', insertErr);
         payload.clinic_id = null;
-        await cloudDb.upsert('bills', [payload], 'invoice_no');
+        const conflictKey = hasUserIdCol ? 'user_id,invoice_no' : 'invoice_no';
+        await cloudDb.upsert('bills', [payload], conflictKey);
       }
       if (clinic && clinic.id && clinic.id.length === 36) {
         try {
@@ -3042,14 +3210,18 @@ document.addEventListener('DOMContentLoaded', () => {
   const cloudSaveProduct = async (product) => {
     isCloudMutating = true;
     try {
+      const userId = getCloudUserId();
       const payload = {
         id: product.id,
+        user_id: userId,
         name: product.name,
         sizes: product.sizes,
         spec: product.spec || '',
         rate: product.rate,
         stocks: product.stocks || {}
       };
+      const hasUserIdCol = await testCloudUserIdSupport();
+      if (!hasUserIdCol) delete payload.user_id;
       await cloudDb.upsert('products', [payload], 'id');
       return true;
     } catch (err) {
@@ -3063,14 +3235,18 @@ document.addEventListener('DOMContentLoaded', () => {
   const cloudUpdateProduct = async (product) => {
     isCloudMutating = true;
     try {
+      const userId = getCloudUserId();
       const payload = {
         id: product.id,
+        user_id: userId,
         name: product.name,
         sizes: product.sizes,
         spec: product.spec || '',
         rate: product.rate,
         stocks: product.stocks || {}
       };
+      const hasUserIdCol = await testCloudUserIdSupport();
+      if (!hasUserIdCol) delete payload.user_id;
       await cloudDb.upsert('products', [payload], 'id');
       return true;
     } catch (err) {
@@ -3128,6 +3304,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const cloudSaveSettings = async (settings) => {
     try {
+      const userId = getCloudUserId();
+      const hasUserIdCol = await testCloudUserIdSupport();
       const payload = {
         company_name: settings.companyName,
         tagline: settings.tagline,
@@ -3139,10 +3317,22 @@ document.addEventListener('DOMContentLoaded', () => {
         authorized_signature: settings.signature,
         updated_at: new Date().toISOString()
       };
-      try {
-        await cloudDb.update('company_settings', payload, 'id=eq.1');
-      } catch (patchErr) {
-        await cloudDb.insert('company_settings', [{ id: 1, ...payload }]);
+      if (hasUserIdCol) {
+        // Each user gets their own settings row, keyed by user_id
+        payload.user_id = userId;
+        try {
+          await cloudDb.update('company_settings', payload, `user_id=eq.${encodeURIComponent(userId)}`);
+        } catch (patchErr) {
+          await cloudDb.insert('company_settings', [{ id: 1, ...payload }]).catch(() =>
+            cloudDb.upsert('company_settings', [{ id: 1, ...payload }], 'id')
+          );
+        }
+      } else {
+        try {
+          await cloudDb.update('company_settings', payload, 'id=eq.1');
+        } catch (patchErr) {
+          await cloudDb.insert('company_settings', [{ id: 1, ...payload }]);
+        }
       }
       return true;
     } catch (err) {
@@ -3154,13 +3344,17 @@ document.addEventListener('DOMContentLoaded', () => {
   const cloudSaveEmployee = async (employee) => {
     isCloudMutating = true;
     try {
+      const userId = getCloudUserId();
       const payload = {
         id: employee.id,
+        user_id: userId,
         name: employee.name,
         role: employee.role || '',
         phone: employee.phone || '',
         created_at: new Date().toISOString()
       };
+      const hasUserIdCol = await testCloudUserIdSupport();
+      if (!hasUserIdCol) delete payload.user_id;
       await cloudDb.upsert('employees', [payload], 'id');
       return true;
     } catch (err) {
@@ -3193,16 +3387,23 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       if (!Array.isArray(records) || records.length === 0) return true;
 
+      const userId = getCloudUserId();
+      const hasUserIdCol = await testCloudUserIdSupport();
+
       // FIRST: Ensure all active employees exist in Supabase employees table
       // to guarantee foreign key integrity across devices!
       if (Array.isArray(state.employees) && state.employees.length > 0) {
-        const empPayloads = state.employees.map(e => ({
-          id: e.id,
-          name: e.name,
-          role: e.role || '',
-          phone: e.phone || '',
-          created_at: new Date().toISOString()
-        }));
+        const empPayloads = state.employees.map(e => {
+          const ep = {
+            id: e.id,
+            name: e.name,
+            role: e.role || '',
+            phone: e.phone || '',
+            created_at: new Date().toISOString()
+          };
+          if (hasUserIdCol) ep.user_id = userId;
+          return ep;
+        });
         try {
           await cloudDb.upsert('employees', empPayloads, 'id');
         } catch (empErr) {
@@ -3211,18 +3412,26 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       try {
-        await cloudDb.delete('attendance', `date=eq.${dateStr}`);
+        // Only delete attendance records belonging to this user for that date
+        const delFilter = hasUserIdCol
+          ? `date=eq.${dateStr}&user_id=eq.${encodeURIComponent(userId)}`
+          : `date=eq.${dateStr}`;
+        await cloudDb.delete('attendance', delFilter);
       } catch (delErr) { }
 
-      const payloads = records.map(r => ({
-        id: generateUUID(),
-        employee_id: r.employeeId,
-        employee_name: r.employeeName || '',
-        date: dateStr,
-        status: r.status || 'Present',
-        notes: r.notes || '',
-        created_at: new Date().toISOString()
-      }));
+      const payloads = records.map(r => {
+        const p = {
+          id: generateUUID(),
+          employee_id: r.employeeId,
+          employee_name: r.employeeName || '',
+          date: dateStr,
+          status: r.status || 'Present',
+          notes: r.notes || '',
+          created_at: new Date().toISOString()
+        };
+        if (hasUserIdCol) p.user_id = userId;
+        return p;
+      });
 
       await cloudDb.upsert('attendance', payloads, 'id');
       return true;
@@ -3238,13 +3447,19 @@ document.addEventListener('DOMContentLoaded', () => {
       isCloudMutating = false;
     }
     try {
+      const userId = getCloudUserId();
+      const hasUserIdCol = await testCloudUserIdSupport();
+      // When user_id column exists, filter all queries by the logged-in user's email
+      const userFilter = (hasUserIdCol && userId) ? `&user_id=eq.${encodeURIComponent(userId)}` : '';
+      const settingsFilter = (hasUserIdCol && userId) ? `select=*&user_id=eq.${encodeURIComponent(userId)}` : 'id=eq.1';
+
       const [dbClinics, dbBills, dbProducts, dbSettings, dbEmployees, dbAttendance] = await Promise.all([
-        cloudDb.get('clinics').catch(() => null),
-        cloudDb.get('bills', 'select=*&order=created_at.desc').catch(() => null),
-        cloudDb.get('products').catch(() => null),
-        cloudDb.get('company_settings', 'id=eq.1').catch(() => null),
-        cloudDb.get('employees').catch(() => null),
-        cloudDb.get('attendance').catch(() => null)
+        cloudDb.get('clinics', `select=*${userFilter}`).catch(() => null),
+        cloudDb.get('bills', `select=*&order=created_at.desc${userFilter}`).catch(() => null),
+        cloudDb.get('products', `select=*${userFilter}`).catch(() => null),
+        cloudDb.get('company_settings', settingsFilter).catch(() => null),
+        cloudDb.get('employees', `select=*${userFilter}`).catch(() => null),
+        cloudDb.get('attendance', `select=*${userFilter}`).catch(() => null)
       ]);
 
       let hasCloudData = false;
