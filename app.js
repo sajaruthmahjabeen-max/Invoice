@@ -749,7 +749,8 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (e) { }
       }
 
-      const savedClinics = localStorage.getItem(getStorageKey('clinics'));
+      let savedClinics = localStorage.getItem(getStorageKey('clinics'));
+      if (savedClinics === null) savedClinics = localStorage.getItem('coverplus_clinics') || localStorage.getItem('coverplus_u_salihathasneem_gmail_com_clinics');
       if (savedClinics !== null) {
         try {
           state.clinics = JSON.parse(savedClinics) || [];
@@ -760,7 +761,8 @@ document.addEventListener('DOMContentLoaded', () => {
         state.clinics = [];
       }
 
-      const savedBills = localStorage.getItem(getStorageKey('bills'));
+      let savedBills = localStorage.getItem(getStorageKey('bills'));
+      if (savedBills === null) savedBills = localStorage.getItem('coverplus_bills') || localStorage.getItem('coverplus_u_salihathasneem_gmail_com_bills');
       if (savedBills !== null) {
         try {
           state.recentBills = JSON.parse(savedBills) || [];
@@ -785,7 +787,8 @@ document.addEventListener('DOMContentLoaded', () => {
         });
       }
 
-      const savedProducts = localStorage.getItem(getStorageKey('products'));
+      let savedProducts = localStorage.getItem(getStorageKey('products'));
+      if (savedProducts === null) savedProducts = localStorage.getItem('coverplus_products') || localStorage.getItem('coverplus_u_salihathasneem_gmail_com_products');
       if (savedProducts !== null) {
         try {
           state.products = JSON.parse(savedProducts) || [];
@@ -796,7 +799,8 @@ document.addEventListener('DOMContentLoaded', () => {
         state.products = [];
       }
 
-      const savedEmployees = localStorage.getItem(getStorageKey('employees'));
+      let savedEmployees = localStorage.getItem(getStorageKey('employees'));
+      if (savedEmployees === null) savedEmployees = localStorage.getItem('coverplus_employees') || localStorage.getItem('coverplus_u_salihathasneem_gmail_com_employees');
       if (savedEmployees !== null) {
         try {
           state.employees = JSON.parse(savedEmployees) || [];
@@ -3447,11 +3451,9 @@ document.addEventListener('DOMContentLoaded', () => {
       isCloudMutating = false;
     }
     try {
-      const userId = getCloudUserId();
-      const hasUserIdCol = await testCloudUserIdSupport();
-      // When user_id column exists, filter all queries by the logged-in user's email
-      const userFilter = (hasUserIdCol && userId) ? `&user_id=eq.${encodeURIComponent(userId)}` : '';
-      const settingsFilter = (hasUserIdCol && userId) ? `select=*&user_id=eq.${encodeURIComponent(userId)}` : 'id=eq.1';
+      // Load all records without restrictive user filtering so no records are hidden
+      const userFilter = '';
+      const settingsFilter = 'select=*';
 
       const [dbClinics, dbBills, dbProducts, dbSettings, dbEmployees, dbAttendance] = await Promise.all([
         cloudDb.get('clinics', `select=*${userFilter}`).catch(() => null),
